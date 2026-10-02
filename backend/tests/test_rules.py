@@ -549,3 +549,24 @@ def test_real_catalog_loads(catalog: Catalog) -> None:
     assert catalog.tiers[-1].max_seats is None
     assert len(catalog.products) == 4
     assert catalog.products["AGENT-CORE"].unit_price == Decimal("120.00")
+
+
+def test_R5_negative_zero_discount_sign_normalization(catalog: Catalog) -> None:
+    # Kills M25: Ensures -0 normalizes to positive Decimal(0) so discount_amount and formatting never produce -0.00
+    raw = {
+        "seats": 10,
+        "lines": [{"sku": "AGENT-CORE", "quantity": 1}],
+        "discount_pct": "-0",
+        "annual_commitment": False,
+    }
+    draft = validate_draft(catalog, raw)
+    assert not draft.discount_pct.is_signed()
+    result = calculate(catalog, draft)
+    assert not result.discount_amount.is_signed()
+    assert format_money(result.discount_amount) == "0.00"
+
+
+def test_R3_format_money_half_up_rounding() -> None:
+    # Kills M35: format_money must round half-cent up (12.005 -> 12.01) rather than even (12.00)
+    assert format_money(Decimal("12.005")) == "12.01"
+    assert format_money(Decimal("12.015")) == "12.02"
