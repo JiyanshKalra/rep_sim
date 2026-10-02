@@ -20,9 +20,11 @@ One line each: any submitted quote can be approved or rejected whether or not ap
 - Seats do not multiply price; ONBOARDING is a flat per-unit line.
 - A status-change endpoint is not in the assignment's list; PATCH /api/quotes/{id}/status was added because the review workflow needs it.
 - "Explain pricing" (SHOULD BUILD B) was intentionally skipped.
+- Golden case for 49 seats at 20% needs approval (20 is above 15); easy to mislabel as a plain valid case.
 
 ## 4. Log (newest last)
 - Repo foundation created: gitignore, env example, README and DECISIONS skeletons.
+- Wrote BUSINESS_RULES R1-R7 and golden cases. Added input-parsing rules: integers and discounts accept numeric strings so the form can send what the rep typed and the API is the only validator. Approval reasons are always listed in a fixed order.
 
 ## 5. AI usage
 TODO
