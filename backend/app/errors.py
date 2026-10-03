@@ -8,7 +8,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app import rules
+from app import rules, storage
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +25,14 @@ async def quote_validation_handler(
     return JSONResponse(status_code=422, content={"errors": errors})
 
 
+async def quote_not_found_handler(
+    request: Request, exc: storage.QuoteNotFoundError
+) -> JSONResponse:
+    # 404 envelope when a requested quote ID is not in storage
+    errors = [_make_error_item(code="not_found", field=None, message="That quote was not found.")]
+    return JSONResponse(status_code=404, content={"errors": errors})
+
+
 async def invalid_transition_handler(
     request: Request, exc: rules.InvalidTransitionError
 ) -> JSONResponse:
@@ -34,12 +42,12 @@ async def invalid_transition_handler(
 
 
 async def request_validation_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
-    # Intercept invalid JSON or non-object payloads with a clear sales-rep friendly error
+    # Intercept invalid JSON or non-object payloads with standard envelope message
     errors = [
         _make_error_item(
             code="malformed_request",
             field=None,
-            message="The request could not be read. Send a JSON object with seats, lines, discount_pct and annual_commitment.",
+            message="The request could not be read. Check the data you sent and try again.",
         )
     ]
     return JSONResponse(status_code=422, content={"errors": errors})
@@ -84,6 +92,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONR
 
 def register_error_handlers(app: FastAPI) -> None:
     app.add_exception_handler(rules.QuoteValidationError, quote_validation_handler)
+    app.add_exception_handler(storage.QuoteNotFoundError, quote_not_found_handler)
     app.add_exception_handler(rules.InvalidTransitionError, invalid_transition_handler)
     app.add_exception_handler(RequestValidationError, request_validation_handler)
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)

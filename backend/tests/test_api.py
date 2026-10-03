@@ -155,7 +155,7 @@ def test_malformed_json_uses_envelope() -> None:
             {
                 "code": "malformed_request",
                 "field": None,
-                "message": "The request could not be read. Send a JSON object with seats, lines, discount_pct and annual_commitment.",
+                "message": "The request could not be read. Check the data you sent and try again.",
             }
         ]
     }
@@ -174,7 +174,7 @@ def test_non_object_body_uses_envelope() -> None:
             {
                 "code": "malformed_request",
                 "field": None,
-                "message": "The request could not be read. Send a JSON object with seats, lines, discount_pct and annual_commitment.",
+                "message": "The request could not be read. Check the data you sent and try again.",
             }
         ]
     }
@@ -334,7 +334,7 @@ def test_R6_get_quote_not_found() -> None:
             {
                 "code": "not_found",
                 "field": None,
-                "message": "Quote not found.",
+                "message": "That quote was not found.",
             }
         ]
     }

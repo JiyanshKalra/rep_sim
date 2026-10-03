@@ -1,7 +1,7 @@
 # Pydantic response models and serializer functions for the quote simulator API.
 # Defines typed data transfer schemas and converts internal rule domain models.
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -75,7 +75,7 @@ class SavedLineOut(BaseModel):
     unit_price: Money
     quantity: int
     line_total: Money
-    catalog_status: str
+    catalog_status: Literal["ok", "removed", "price_changed"]
 
 
 class SavedQuoteResponse(BaseModel):
@@ -83,7 +83,7 @@ class SavedQuoteResponse(BaseModel):
     customer_name: str
     seats: int
     annual_commitment: bool
-    status: str
+    status: Literal["draft", "submitted", "approved", "rejected"]
     created_at: str
     updated_at: str
     allowed_next_statuses: list[str]
@@ -98,7 +98,7 @@ class QuoteSummaryOut(BaseModel):
     tier: str
     total: Money
     approval_required: bool
-    status: str
+    status: Literal["draft", "submitted", "approved", "rejected"]
     created_at: str
 
 
@@ -141,7 +141,6 @@ def catalog_to_response(catalog: rules.Catalog) -> CatalogResponse:
 
 
 def calculation_to_response(result: rules.CalculationResult) -> CalculationResponse:
-    # Preserve line order from calculation result and format money fields
     lines = [
         LineOut(
             sku=line.sku,
@@ -167,68 +166,38 @@ def calculation_to_response(result: rules.CalculationResult) -> CalculationRespo
 
 
 def saved_quote_to_response(catalog: rules.Catalog, quote: dict[str, Any]) -> SavedQuoteResponse:
-    # R6: Compute line freshness dynamically against loaded catalog
+    # Reconstruct CalculationResponse and evaluate live catalog freshness for each line
+    result = CalculationResponse.model_validate(quote["result"])
     lines = [
         SavedLineOut(
-            sku=line["sku"],
-            name=line["name"],
-            unit_price=line["unit_price"],
-            quantity=line["quantity"],
-            line_total=line["line_total"],
-            catalog_status=rules.line_catalog_status(catalog, line["sku"], line["unit_price"]),
+            **line.model_dump(),
+            catalog_status=rules.line_catalog_status(catalog, line.sku, line.unit_price),
         )
-        for line in quote.get("lines", [])
+        for line in result.lines
     ]
-
-    calc_data = quote.get("result", {})
-    calc_lines = [
-        LineOut(
-            sku=line["sku"],
-            name=line["name"],
-            unit_price=line["unit_price"],
-            quantity=line["quantity"],
-            line_total=line["line_total"],
-        )
-        for line in calc_data.get("lines", [])
-    ]
-
-    calc_response = CalculationResponse(
-        tier=calc_data.get("tier", ""),
-        max_discount_pct=calc_data.get("max_discount_pct", "0"),
-        currency=calc_data.get("currency", catalog.currency),
-        lines=calc_lines,
-        subtotal=calc_data.get("subtotal", "0.00"),
-        discount_pct=calc_data.get("discount_pct", "0"),
-        discount_amount=calc_data.get("discount_amount", "0.00"),
-        total=calc_data.get("total", "0.00"),
-        approval_required=calc_data.get("approval_required", False),
-        approval_reasons=calc_data.get("approval_reasons", []),
-    )
-
-    status = quote.get("status", rules.INITIAL_STATUS)
     return SavedQuoteResponse(
         id=quote["id"],
         customer_name=quote["customer_name"],
         seats=quote["seats"],
         annual_commitment=quote["annual_commitment"],
-        status=status,
+        status=quote["status"],
         created_at=quote["created_at"],
         updated_at=quote["updated_at"],
-        allowed_next_statuses=rules.allowed_next_statuses(status),
+        allowed_next_statuses=rules.allowed_next_statuses(quote["status"]),
         lines=lines,
-        result=calc_response,
+        result=result,
     )
 
 
 def quote_to_summary(quote: dict[str, Any]) -> QuoteSummaryOut:
-    calc = quote.get("result", {})
+    # Direct indexing ensures missing data raises immediately rather than defaulting
     return QuoteSummaryOut(
         id=quote["id"],
         customer_name=quote["customer_name"],
         seats=quote["seats"],
-        tier=calc.get("tier", ""),
-        total=calc.get("total", "0.00"),
-        approval_required=calc.get("approval_required", False),
-        status=quote.get("status", rules.INITIAL_STATUS),
-        created_at=quote.get("created_at", ""),
+        tier=quote["result"]["tier"],
+        total=quote["result"]["total"],
+        approval_required=quote["result"]["approval_required"],
+        status=quote["status"],
+        created_at=quote["created_at"],
     )
