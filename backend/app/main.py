@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app import rules, storage
 from app.config import get_catalog_path, get_cors_origins
 from app.errors import register_error_handlers
+from app.explain import explain_pricing
 from app.schemas import (
     CalculationResponse,
     CatalogResponse,
@@ -72,7 +73,8 @@ def calculate_quote(
     # Route handlers contain no business logic: validate draft, calculate, and serialize
     draft = rules.validate_draft(catalog, body, require_customer_name=False)
     result = rules.calculate(catalog, draft)
-    return calculation_to_response(result)
+    explanation = explain_pricing(draft, result)
+    return calculation_to_response(result, explanation)
 
 
 @app.post(
@@ -88,11 +90,13 @@ def create_quote(
     """Validate and save a quote snapshot, assigning initial draft status (R6)."""
     draft = rules.validate_draft(catalog, body, require_customer_name=True)
     result = rules.calculate(catalog, draft)
+    explanation = explain_pricing(draft, result)
+    calc_response = calculation_to_response(result, explanation)
     record = storage.create_quote(
         draft.customer_name,
         draft.seats,
         draft.annual_commitment,
-        calculation_to_response(result).model_dump(),
+        calc_response.model_dump(),
     )
     return saved_quote_to_response(catalog, record)
 

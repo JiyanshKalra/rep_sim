@@ -67,6 +67,7 @@ class CalculationResponse(BaseModel):
     total: Money
     approval_required: bool
     approval_reasons: list[str]
+    explanation: list[str]
 
 
 class SavedLineOut(BaseModel):
@@ -140,7 +141,9 @@ def catalog_to_response(catalog: rules.Catalog) -> CatalogResponse:
     )
 
 
-def calculation_to_response(result: rules.CalculationResult) -> CalculationResponse:
+def calculation_to_response(
+    result: rules.CalculationResult, explanation: list[str]
+) -> CalculationResponse:
     lines = [
         LineOut(
             sku=line.sku,
@@ -162,6 +165,7 @@ def calculation_to_response(result: rules.CalculationResult) -> CalculationRespo
         total=rules.format_money(result.total),
         approval_required=result.approval_required,
         approval_reasons=list(result.approval_reasons),
+        explanation=explanation,
     )
 
 

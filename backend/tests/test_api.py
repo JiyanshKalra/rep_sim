@@ -56,6 +56,23 @@ def test_golden_calculation_cases_via_api(case: dict) -> None:
     assert data["approval_reasons"] == expected["approval_reasons"]
 
 
+@pytest.mark.parametrize("case", CALCULATION_CASES, ids=[c["id"] for c in CALCULATION_CASES])
+def test_calculate_includes_explanation_for_golden_cases(case: dict) -> None:
+    # R8: Verify calculate response includes valid explanation lines for all golden cases
+    response = client.post("/api/quotes/calculate", json=case["input"])
+    assert response.status_code == 200
+    data = response.json()
+    explanation = data["explanation"]
+    assert isinstance(explanation, list) and len(explanation) > 0
+    assert all(isinstance(line, str) for line in explanation)
+
+    reason_lines = [line for line in explanation if line.startswith("Approval required because")]
+    assert len(reason_lines) == len(data["approval_reasons"])
+
+    if not data["approval_required"]:
+        assert explanation[-1] == "Approval is not required."
+
+
 @pytest.mark.parametrize("case", VALIDATION_CASES, ids=[c["id"] for c in VALIDATION_CASES])
 def test_golden_validation_cases_via_api(case: dict) -> None:
     # Verify invalid drafts produce expected 422 error envelope and rule codes
@@ -113,6 +130,11 @@ def test_R3_worked_example_full_response() -> None:
         "total": "16000.00",
         "approval_required": True,
         "approval_reasons": ["discount_above_15_percent"],
+        "explanation": [
+            "50 seats → Enterprise tier → maximum discount 30%.",
+            "Subtotal $20,000.00 → 20% discount ($4,000.00) → final $16,000.00.",
+            "Approval required because discount is above 15%.",
+        ],
     }
 
 

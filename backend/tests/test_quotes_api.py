@@ -67,6 +67,45 @@ def test_R6_saved_result_equals_calculate_response() -> None:
     assert saved["result"] == calc_res.json()
 
 
+def test_saved_quote_stores_explanation() -> None:
+    # R8: Saved quote persists explanation snapshot identical to calculate endpoint
+    calc_res = client.post("/api/quotes/calculate", json=WORKED_EXAMPLE)
+    assert calc_res.status_code == 200
+    calc_explanation = calc_res.json()["explanation"]
+
+    saved = _save_worked_example("Stored Explanation Corp")
+    get_res = client.get(f"/api/quotes/{saved['id']}")
+    assert get_res.status_code == 200
+    stored_result = get_res.json()["result"]
+    assert stored_result["explanation"] == calc_explanation
+
+
+def test_saved_explanation_survives_catalog_change(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # R8: Saved explanation is an immutable snapshot surviving subsequent catalog changes
+    saved = _save_worked_example("Immutable Explanation Corp")
+    quote_id = saved["id"]
+    original_explanation = saved["result"]["explanation"]
+
+    mod_catalog_file = tmp_path / "mod_catalog.json"
+    mod_catalog_data = {
+        "currency": "USD",
+        "products": [
+            {"sku": "AGENT-CORE", "name": "Agent Core", "unit_price": 999.00},
+        ],
+        "discount_rules": [
+            {"code": "STARTER", "min_seats": 1, "max_seats": 99999, "max_discount_pct": 5},
+        ],
+    }
+    mod_catalog_file.write_text(json.dumps(mod_catalog_data), encoding="utf-8")
+    monkeypatch.setenv("CATALOG_PATH", str(mod_catalog_file))
+
+    get_res = client.get(f"/api/quotes/{quote_id}")
+    assert get_res.status_code == 200
+    assert get_res.json()["result"]["explanation"] == original_explanation
+
+
 def test_R5_invalid_save_stores_nothing() -> None:
     # R5: Invalid save returns validation errors in order and creates no stored records
     payload = {
