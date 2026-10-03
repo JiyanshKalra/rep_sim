@@ -43,10 +43,9 @@ def create_quote(
 ) -> dict[str, Any]:
     """Persist a newly calculated draft quote record under the storage lock (R6)."""
     target_path = quotes_path or get_quotes_path()
-    quote_id = str(uuid.uuid4())
     now_iso = datetime.now(timezone.utc).isoformat()
     record = {
-        "id": quote_id,
+        "id": str(uuid.uuid4()),
         "customer_name": customer_name,
         "seats": seats,
         "annual_commitment": annual_commitment,
@@ -57,7 +56,7 @@ def create_quote(
     }
     with _storage_lock:
         quotes = _read_quotes_file(target_path)
-        quotes[quote_id] = record
+        quotes[record["id"]] = record
         _write_quotes_file(target_path, quotes)
     return record
 
