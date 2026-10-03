@@ -570,3 +570,77 @@ def test_R3_format_money_half_up_rounding() -> None:
     # Kills M35: format_money must round half-cent up (12.005 -> 12.01) rather than even (12.00)
     assert format_money(Decimal("12.005")) == "12.01"
     assert format_money(Decimal("12.015")) == "12.02"
+
+
+def test_R6_customer_name_length_is_checked_after_stripping(catalog: Catalog) -> None:
+    # R6: Name with surrounding spaces strips to exactly 120 chars and is accepted
+    padded_name = " " + "A" * 120 + " "
+    raw = {
+        "seats": 10,
+        "lines": [{"sku": "AGENT-CORE", "quantity": 1}],
+        "discount_pct": "0",
+        "annual_commitment": False,
+        "customer_name": padded_name,
+    }
+    draft = validate_draft(catalog, raw, require_customer_name=True)
+    assert draft.customer_name == "A" * 120
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        None,
+        [],
+        "text",
+        {},
+        {"seats": [], "lines": [{"sku": "AGENT-CORE", "quantity": 1}], "discount_pct": "0"},
+        {"seats": {}, "lines": [{"sku": "AGENT-CORE", "quantity": 1}], "discount_pct": "0"},
+        {"seats": 10, "lines": {}, "discount_pct": "0"},
+        {"seats": 10, "lines": "bad", "discount_pct": "0"},
+        {"seats": 10, "lines": [None], "discount_pct": "0"},
+        {"seats": 10, "lines": [5], "discount_pct": "0"},
+        {"seats": 10, "lines": ["AGENT-CORE"], "discount_pct": "0"},
+        {"seats": 10, "lines": [{"sku": ["AGENT-CORE"], "quantity": 1}], "discount_pct": "0"},
+        {"seats": 10, "lines": [{"sku": "AGENT-CORE", "quantity": [1]}], "discount_pct": "0"},
+        {"seats": 10, "lines": [{"sku": "AGENT-CORE", "quantity": {}}], "discount_pct": "0"},
+        {
+            "seats": 10,
+            "lines": [{"sku": "AGENT-CORE", "quantity": 1}],
+            "discount_pct": float("inf"),
+        },
+        {"seats": 10, "lines": [{"sku": "AGENT-CORE", "quantity": 1}], "discount_pct": []},
+        {"seats": 10, "lines": [{"sku": "AGENT-CORE", "quantity": 1}], "discount_pct": {}},
+        {
+            "seats": 10,
+            "lines": [{"sku": "AGENT-CORE", "quantity": 1}],
+            "discount_pct": "0",
+            "customer_name": 42,
+            "annual_commitment": False,
+        },
+        {
+            "seats": 10,
+            "lines": [{"sku": "AGENT-CORE", "quantity": 1}],
+            "discount_pct": "0",
+            "annual_commitment": [],
+        },
+    ],
+)
+def test_R5_malformed_payloads_only_raise_quote_validation_error(
+    catalog: Catalog, payload: object
+) -> None:
+    # R5: Every malformed payload must raise QuoteValidationError (never KeyError, TypeError, etc.)
+    # and every error must have a non-empty code, a field, and a message.
+    try:
+        validate_draft(catalog, payload, require_customer_name=True)  # type: ignore[arg-type]
+        assert False, f"Expected QuoteValidationError for payload: {payload!r}"
+    except QuoteValidationError as exc:
+        assert len(exc.errors) > 0, "At least one error expected"
+        for err in exc.errors:
+            assert err.code, f"Error code must be non-empty: {err!r}"
+            assert err.field is not None, f"Error field must not be None: {err!r}"
+            assert err.message, f"Error message must be non-empty: {err!r}"
+    except Exception as exc:
+        raise AssertionError(
+            f"Expected QuoteValidationError but got {type(exc).__name__}: {exc}\n"
+            f"Payload: {payload!r}"
+        ) from exc
