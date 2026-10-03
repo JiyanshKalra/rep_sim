@@ -51,7 +51,9 @@ All environment variables are optional with working defaults documented in [.env
 
 - **Backend**: Pytest suite covering business rules, API routes, calculation cases, explain, and health:
   ```bash
-  cd backend && pytest -q      # 237 passed across 5 test files
+  cd backend
+  pip install -r requirements-dev.txt
+  pytest -q      # 237 passed across 5 test files
   ruff check .                 # Lint clean
   ```
 - **Frontend**: Vitest suite, ESLint, TypeScript compiler, and Next.js build:
