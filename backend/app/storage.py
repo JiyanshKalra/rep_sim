@@ -39,10 +39,8 @@ def create_quote(
     seats: int,
     annual_commitment: bool,
     result: dict[str, Any],
-    quotes_path: Path | None = None,
 ) -> dict[str, Any]:
     """Persist a newly calculated draft quote record under the storage lock (R6)."""
-    target_path = quotes_path or get_quotes_path()
     now_iso = datetime.now(timezone.utc).isoformat()
     record = {
         "id": str(uuid.uuid4()),
@@ -55,28 +53,27 @@ def create_quote(
         "result": result,
     }
     with _storage_lock:
-        quotes = _read_quotes_file(target_path)
+        path = get_quotes_path()
+        quotes = _read_quotes_file(path)
         quotes[record["id"]] = record
-        _write_quotes_file(target_path, quotes)
+        _write_quotes_file(path, quotes)
     return record
 
 
-def get_quote(quote_id: str, quotes_path: Path | None = None) -> dict[str, Any]:
+def get_quote(quote_id: str) -> dict[str, Any]:
     """Retrieve a saved quote record by its ID or raise QuoteNotFoundError."""
-    target_path = quotes_path or get_quotes_path()
     with _storage_lock:
-        quotes = _read_quotes_file(target_path)
+        quotes = _read_quotes_file(get_quotes_path())
         quote = quotes.get(quote_id)
         if quote is None:
             raise QuoteNotFoundError(f"Quote {quote_id} not found.")
         return quote
 
 
-def list_quotes(quotes_path: Path | None = None) -> list[dict[str, Any]]:
+def list_quotes() -> list[dict[str, Any]]:
     """Return all saved quotes newest first based on reverse insertion order."""
-    target_path = quotes_path or get_quotes_path()
     with _storage_lock:
-        quotes = _read_quotes_file(target_path)
+        quotes = _read_quotes_file(get_quotes_path())
 
     # Reverse dict values so newest created quotes appear first without timestamp collision issues
     return list(reversed(quotes.values()))
@@ -85,12 +82,11 @@ def list_quotes(quotes_path: Path | None = None) -> list[dict[str, Any]]:
 def update_quote_status(
     quote_id: str,
     new_status: str,
-    quotes_path: Path | None = None,
 ) -> dict[str, Any]:
     """Validate and transition quote status under storage lock or raise on error (R7)."""
-    target_path = quotes_path or get_quotes_path()
     with _storage_lock:
-        quotes = _read_quotes_file(target_path)
+        path = get_quotes_path()
+        quotes = _read_quotes_file(path)
         quote = quotes.get(quote_id)
         if quote is None:
             raise QuoteNotFoundError(f"Quote {quote_id} not found.")
@@ -101,5 +97,5 @@ def update_quote_status(
         quote["status"] = new_status
         quote["updated_at"] = datetime.now(timezone.utc).isoformat()
         quotes[quote_id] = quote
-        _write_quotes_file(target_path, quotes)
+        _write_quotes_file(path, quotes)
         return quote
