@@ -104,3 +104,12 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
 .approval-required { background-color: var(--approval-req-bg); border: 1px solid var(--approval-req-border); border-radius: 4px; padding: 12px; }
 .problems-box { background-color: var(--problems-bg); border-left: 4px solid var(--error); border-radius: 4px; padding: 12px; }
 .problems-box ul { margin: 0; padding-left: 18px; color: var(--error); font-size: 14px; }
+.page-header { display: flex; justify-content: space-between; align-items: center; }
+a { color: var(--focus); text-decoration: underline; }
+a:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.banner { background-color: var(--approval-req-bg); border: 2px solid var(--approval-req-border); color: var(--text); padding: 12px; border-radius: 4px; margin: 16px 0; }
+.status-text { font-size: 16px; font-weight: 600; margin: 8px 0 16px; }
+.customer-details { display: grid; grid-template-columns: 160px 1fr; gap: 4px 12px; margin: 16px 0; font-size: 14px; }
+.customer-details dd { margin: 0; }
+.status-actions { display: flex; gap: 12px; margin-top: 20px; }
+.quote-review, .quote-result { display: flex; flex-direction: column; gap: 16px; }
