@@ -55,6 +55,27 @@ function toErrorItems(json: unknown): ApiErrorItem[] {
   ];
 }
 
+// Runs fetch and maps network/abort exceptions to ApiResult failure shapes.
+// Kept separate so `request` stays under 25 lines.
+async function fetchOrFail<T>(
+  input: string,
+  init: RequestInit,
+): Promise<ApiResult<T> | Response> {
+  try {
+    return await fetch(input, init);
+  } catch (err) {
+    if (err instanceof DOMException && err.name === "AbortError") {
+      return { ok: false, kind: "aborted" };
+    }
+    return {
+      ok: false,
+      kind: "network",
+      message:
+        "Could not reach the quote service. Check that the backend is running and try again.",
+    };
+  }
+}
+
 // Core fetch wrapper. Adds a JSON body only when `body` is defined so that
 // GET requests without custom headers avoid a CORS preflight.
 async function request<T>(
@@ -68,26 +89,14 @@ async function request<T>(
     init.body = JSON.stringify(body);
     init.headers = { "Content-Type": "application/json" };
   }
-  let response: Response;
-  try {
-    response = await fetch(API_URL + path, init);
-  } catch (err) {
-    if (err instanceof DOMException && err.name === "AbortError") {
-      return { ok: false, kind: "aborted" };
-    }
-    return {
-      ok: false,
-      kind: "network",
-      message:
-        "Could not reach the quote service. Check that the backend is running and try again.",
-    };
-  }
-  const json = await readJson(response);
-  if (response.ok && json !== undefined) {
+  const result = await fetchOrFail<T>(API_URL + path, init);
+  if (!(result instanceof Response)) return result;
+  const json = await readJson(result);
+  if (result.ok && json !== undefined) {
     // Success body is trusted to match the API contract; the backend tests cover this.
     return { ok: true, data: json as T };
   }
-  return { ok: false, kind: "api", status: response.status, errors: toErrorItems(json) };
+  return { ok: false, kind: "api", status: result.status, errors: toErrorItems(json) };
 }
 
 // ---- Public API functions ----
