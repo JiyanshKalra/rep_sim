@@ -14,7 +14,7 @@ function insertCommas(whole: string): string {
 // USD and CAD get a "$" prefix; every other currency gets the code and a space.
 // Example: formatMoney("20000.00", "USD") -> "$20,000.00"
 // Example: formatMoney("1000.00", "EUR") -> "EUR 1,000.00"
-// No Number, parseFloat, Intl or toFixed — just string splitting and regex (R3).
+// No numeric casts or arithmetic formatting APIs — just string splitting and regex (R3).
 export function formatMoney(amount: Money, currency: string): string {
   const [whole, cents] = amount.split(".");
   const formatted = insertCommas(whole) + (cents !== undefined ? "." + cents : "");
