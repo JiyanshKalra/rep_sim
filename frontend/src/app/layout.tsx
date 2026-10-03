@@ -1,4 +1,4 @@
-﻿// Root layout: app shell with sticky top navigation and Inter font.
+// Root layout: app shell with sticky top navigation and Inter font.
 // The nav renders on every route to give users consistent orientation.
 import type { Metadata } from "next";
 import Link from "next/link";

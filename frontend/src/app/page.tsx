@@ -1,4 +1,4 @@
-﻿// Home page: quote builder. Server component rendering the page wrapper and QuoteBuilder.
+// Home page: quote builder. Server component rendering the page wrapper and QuoteBuilder.
 import QuoteBuilder from "../components/QuoteBuilder";
 
 export default function Home() {

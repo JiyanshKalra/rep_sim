@@ -19,12 +19,18 @@ One line each: any submitted quote can be approved or rejected whether or not ap
 - A discount above the tier maximum is a validation error, not an approval case.
 - Seats do not multiply price; ONBOARDING is a flat per-unit line.
 - A status-change endpoint is not in the assignment's list; PATCH /api/quotes/{id}/status was added because the review workflow needs it.
-- "Explain pricing" (SHOULD BUILD B) was intentionally skipped.
+- "Explain pricing" (SHOULD BUILD B) and "Scenario comparison" (SHOULD BUILD A): both implemented end-to-end with deterministic backend logic and dedicated frontend components.
 - Golden case for 49 seats at 20% needs approval (20 is above 15); easy to mislabel as a plain valid case.
 
 ## 4. Log (newest last)
 - Repo foundation created: gitignore, env example, README and DECISIONS skeletons.
 - Wrote BUSINESS_RULES R1-R7 and golden cases. Added input-parsing rules: integers and discounts accept numeric strings so the form can send what the rep typed and the API is the only validator. Approval reasons are always listed in a fixed order.
+- Implemented Vitest setup and comprehensive frontend unit tests for display and field error helpers.
+- Styled frontend with clean, responsive design tokens, layout hierarchy, and status workflow presentation.
+- Implemented draft persistence and recovery in localStorage with shape validation.
+- Implemented deterministic pricing explanation in backend (`app/explain.py`), exposing plain-English breakdown on calculation and saved quote responses, and rendered via `ExplanationPanel` on preview and review.
+- Implemented pure product comparison helper (`src/compareLines.ts`) and Scenario B side-by-side comparison in `ScenarioComparison.tsx`.
+- Conducted full-fidelity QA audit: added duplicate submit guard on quote creation, comparison row diff text tags, table horizontal scroll support on narrow viewports, and normalized all repo files to LF without BOM.
 
 ## 5. AI usage
 AI (Gemini / Antigravity coding assistant) was used as a development assistant throughout the project to assist with implementation speed, drafting unit test cases, scaffolding TypeScript types, and formatting documentation. All architectural decisions, rule formulations in `BUSINESS_RULES.md`, edge-case reviews, manual verification, and test execution were reviewed and validated as part of the engineering workflow.

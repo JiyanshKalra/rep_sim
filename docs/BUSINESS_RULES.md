@@ -1,4 +1,4 @@
-﻿# Business Rules (R1 to R7)
+# Business Rules (R1 to R7)
 
 This is the source of truth for the calculation and its tests. Tests and code
 comments cite these IDs. The only implementation of these rules is

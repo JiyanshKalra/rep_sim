@@ -1,4 +1,4 @@
-﻿// Saved quotes list page. Server component; QuotesList fetches data client-side.
+// Saved quotes list page. Server component; QuotesList fetches data client-side.
 import Link from "next/link";
 import QuotesList from "../../components/QuotesList";
 
