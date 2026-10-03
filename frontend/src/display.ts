@@ -1,7 +1,7 @@
 // Pure string-formatting helpers for values that the API already calculated.
 // There is NO arithmetic in this file — the browser formats strings the API returned (R3).
 
-import type { ApprovalReason, ApprovalRules, Money, Percent, Tier } from "./types";
+import type { ApprovalReason, ApprovalRules, CatalogStatus, Money, Percent, QuoteStatus, Tier } from "./types";
 
 // Insert commas every three digits in the whole-number part of a money string.
 // "20000" -> "20,000". Uses a regex replace, not numeric parsing.
@@ -60,5 +60,60 @@ export function describeReason(
         "Annual commitment with a discount above " +
         formatPercent(rules.annual_commitment_discount_above_pct)
       );
+  }
+}
+
+// Format an ISO timestamp string into a readable UTC date-time string.
+// Example: "2026-10-03T14:05:09.123456+00:00" -> "2026-10-03 14:05 UTC"
+export function formatTimestamp(iso: string): string {
+  const clean = iso.replace("T", " ");
+  return clean.slice(0, 16) + " UTC";
+}
+
+// Describe whether a quote requires deal desk approval.
+export function describeApproval(required: boolean): string {
+  return required ? "Approval required" : "No approval required";
+}
+
+// Describe the current lifecycle status of a quote.
+// The switch is exhaustive with NO default branch.
+export function describeStatus(status: QuoteStatus): string {
+  switch (status) {
+    case "draft":
+      return "Draft";
+    case "submitted":
+      return "Submitted";
+    case "approved":
+      return "Approved";
+    case "rejected":
+      return "Rejected";
+  }
+}
+
+// Return the button action label for transitioning to a target status.
+// The switch is exhaustive with NO default branch.
+export function statusActionLabel(next: QuoteStatus): string {
+  switch (next) {
+    case "submitted":
+      return "Submit for approval";
+    case "approved":
+      return "Approve";
+    case "rejected":
+      return "Reject";
+    case "draft":
+      return "Back to draft";
+  }
+}
+
+// Describe changes to catalog products since the quote was originally saved (R6).
+// The switch is exhaustive with NO default branch.
+export function describeCatalogStatus(status: CatalogStatus): string {
+  switch (status) {
+    case "ok":
+      return "";
+    case "removed":
+      return "No longer in the catalog";
+    case "price_changed":
+      return "Catalog price has changed since this quote was saved";
   }
 }
