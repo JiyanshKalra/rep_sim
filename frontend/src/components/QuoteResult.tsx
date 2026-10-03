@@ -10,6 +10,7 @@ import {
   formatPercent,
   formatTimestamp,
 } from "../display";
+import ExplanationPanel from "./ExplanationPanel";
 
 interface Props {
   quote: SavedQuote;
@@ -172,6 +173,7 @@ export default function QuoteResult({ quote, currency, approvalRules }: Props) {
       <div className="review-aside">
         <PricingBlock quote={quote} currency={currency} />
         <ApprovalCard quote={quote} rules={approvalRules} currency={currency} />
+        <ExplanationPanel lines={quote.result.explanation} />
       </div>
     </div>
   );

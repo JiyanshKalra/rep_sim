@@ -4,6 +4,7 @@
 import type { ApprovalRules, Calculation } from "../types";
 import type { CalculationView } from "../useCalculate";
 import { describeReason, formatMoney, formatPercent } from "../display";
+import ExplanationPanel from "./ExplanationPanel";
 
 interface Props {
   view: CalculationView;
@@ -164,6 +165,7 @@ export default function QuotePreview({ view, approvalRules, isBlank }: Props) {
           <LineItemsSummary calc={calculation} currency={currency} />
           <TotalsBlock calc={calculation} currency={currency} />
           <ApprovalBox calc={calculation} rules={approvalRules} currency={currency} />
+          <ExplanationPanel lines={calculation.explanation} />
         </div>
       )}
     </section>
