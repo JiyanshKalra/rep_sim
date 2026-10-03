@@ -410,3 +410,14 @@ a:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; bo
 .approval-tag.is-ok { background: var(--color-success-bg); color: var(--color-success-text); border-color: var(--color-success-border); }
 .approval-reasons-list { margin: 0; padding-left: var(--space-4); list-style: disc; }
 .approval-reasons-list li { font-size: var(--font-size-xs); color: var(--color-approval-req-text); }
+.comparison-scroll { overflow-x: auto; max-width: 100%; }
+.diff-marker {
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  border: 1px solid currentColor;
+  border-radius: 4px;
+  padding: 0 6px;
+  color: var(--color-warning-text);
+}

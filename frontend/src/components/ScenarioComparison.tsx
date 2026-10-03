@@ -37,7 +37,11 @@ function ComparisonRow({
 }) {
   return (
     <tr className={isDiff ? "comparison-row comparison-row-diff" : "comparison-row"}>
-      <td className="comparison-label">{label}</td>
+      <td className="comparison-label">
+        {label}
+        {/* The word exists so the difference is not shown by colour alone. */}
+        {isDiff && <span className="diff-marker">differs</span>}
+      </td>
       <td className="comparison-val-a">{valueA}</td>
       <td className="comparison-val-b">{valueB}</td>
     </tr>
@@ -61,7 +65,9 @@ function ProductDiffsBlock({ diffs }: { diffs: LineDiff[] }) {
   return (
     <div className="comparison-section">
       <h3 className="comparison-section-title">Products Comparison</h3>
-      <table className="comparison-table">
+      {/* Narrow screens must scroll the table, not the page. */}
+      <div className="comparison-scroll">
+        <table className="comparison-table">
         <thead>
           <tr>
             <th>Product</th>
@@ -85,6 +91,7 @@ function ProductDiffsBlock({ diffs }: { diffs: LineDiff[] }) {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   );
 }
@@ -150,7 +157,9 @@ export default function ScenarioComparison({
       </div>
 
       <div className="comparison-body">
-        <table className="comparison-table">
+        {/* Narrow screens must scroll the table, not the page. */}
+        <div className="comparison-scroll">
+          <table className="comparison-table">
           <thead>
             <tr>
               <th>Metric</th>
@@ -196,7 +205,13 @@ export default function ScenarioComparison({
               isDiff={calcA.total !== calcB.total}
             />
             <tr className={calcA.approval_required !== calcB.approval_required ? "comparison-row comparison-row-diff" : "comparison-row"}>
-              <td className="comparison-label">Approval</td>
+              <td className="comparison-label">
+                Approval
+                {/* The word exists so the difference is not shown by colour alone. */}
+                {calcA.approval_required !== calcB.approval_required && (
+                  <span className="diff-marker">differs</span>
+                )}
+              </td>
               <td>
                 <ApprovalSummary calc={calcA} rules={approvalRules} currency={currency} />
               </td>
@@ -205,7 +220,8 @@ export default function ScenarioComparison({
               </td>
             </tr>
           </tbody>
-        </table>
+          </table>
+        </div>
 
         <ProductDiffsBlock diffs={diffs} />
       </div>
