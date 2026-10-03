@@ -10,11 +10,11 @@ from pathlib import Path
 from typing import Any
 
 # R4: Strict >, exactly 15% discount does not need deal desk approval
-DISCOUNT_ABOVE_PCT = Decimal("15")  # noqa: FURB157
+DISCOUNT_ABOVE_PCT = Decimal(15)
 # R4: Strict >, exactly $25,000 post-discount total does not need deal desk approval
-TOTAL_ABOVE = Decimal("25000")  # noqa: FURB157
+TOTAL_ABOVE = Decimal(25000)
 # R4: Strict >, exactly 10% discount with annual commitment does not need deal desk approval
-COMMITMENT_DISCOUNT_ABOVE_PCT = Decimal("10")  # noqa: FURB157
+COMMITMENT_DISCOUNT_ABOVE_PCT = Decimal(10)
 # R5: System sanity limit for seat count minimum
 MIN_SEATS = 1
 # R5: System sanity limit for seat count maximum
@@ -146,7 +146,7 @@ def _parse_discount(raw: Any) -> tuple[Decimal | None, str | None]:
     else:
         return None, "discount_not_number"
 
-    # R5: Negative zero (-0 or -0.0) counts as 0, not negative
+    # R5: Negative zero (-0 or -0.0) counts as 0, not negative; assigning Decimal(0) drops the minus sign of "-0"
     if dec == Decimal(0):
         dec = Decimal(0)
     if dec < Decimal(0):
