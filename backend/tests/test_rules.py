@@ -743,3 +743,16 @@ def test_C4_catalog_unit_price_rounds_half_up() -> None:
     cat = build_catalog(catalog_data)
     assert cat.products["P1"].unit_price == Decimal("0.01")
     assert cat.products["P2"].unit_price == Decimal("12.35")
+
+
+def test_C5_decimal_discount_pct_is_rejected_as_not_number(catalog: Catalog) -> None:
+    # C5: discount_pct as Decimal object is rejected with "discount_not_number"
+    raw = {
+        "seats": 10,
+        "lines": [{"sku": "AGENT-CORE", "quantity": 1}],
+        "discount_pct": Decimal(10),
+        "annual_commitment": False,
+    }
+    with pytest.raises(QuoteValidationError) as exc_info:
+        validate_draft(catalog, raw)
+    assert any(e.code == "discount_not_number" for e in exc_info.value.errors)

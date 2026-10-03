@@ -143,8 +143,6 @@ def _parse_discount(raw: Any) -> tuple[Decimal | None, str | None]:
         if not _DISCOUNT_PATTERN.match(trimmed):
             return None, "discount_not_number"
         dec = Decimal(trimmed)
-    elif isinstance(raw, Decimal):
-        dec = raw
     else:
         return None, "discount_not_number"
 
