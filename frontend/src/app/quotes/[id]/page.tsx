@@ -1,12 +1,13 @@
-// Quote review page route.
-// Server component rendering the page container, back link, and client QuoteReview.
+// Quote review page. Server component rendering the QuoteReview client component.
 import Link from "next/link";
 import QuoteReview from "../../../components/QuoteReview";
 
 export default function QuoteDetailPage() {
   return (
-    <main className="page">
-      <Link href="/quotes">Back to saved quotes</Link>
+    <main className="page-wrapper">
+      <Link href="/quotes" className="back-link">
+        {String.fromCharCode(8592)} Back to Saved Quotes
+      </Link>
       <QuoteReview />
     </main>
   );

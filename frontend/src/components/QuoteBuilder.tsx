@@ -67,7 +67,7 @@ function useQuoteSave(form: QuoteFormState) {
 function ProblemsBox({ problems }: { problems: string[] }) {
   if (problems.length === 0) return null;
   return (
-    <div role="alert" className="problems-box">
+    <div role="alert" className="problems-box" style={{ marginTop: "var(--space-4)" }}>
       <ul>
         {problems.map((msg) => (
           <li key={msg}>{msg}</li>
@@ -96,8 +96,8 @@ function QuoteBuilderReady({ catalog }: { catalog: Catalog }) {
   const problems = unplacedMessages(view.errors, placed).concat(unplacedMessages(saveErrors, placed));
 
   return (
-    <form className="builder" onSubmit={handleSubmit}>
-      <div className="form-column">
+    <form className="builder" onSubmit={handleSubmit} noValidate>
+      <div>
         <QuoteForm
           form={form}
           catalog={catalog}
@@ -120,7 +120,23 @@ function QuoteBuilderReady({ catalog }: { catalog: Catalog }) {
 
 export default function QuoteBuilder() {
   const load = useCatalog();
-  if (load.kind === "loading") return <p>Loading catalog...</p>;
-  if (load.kind === "error") return <p>{load.message} Refresh the page to try again.</p>;
+  if (load.kind === "loading") {
+    return <div className="state-loading">Loading catalog configuration...</div>;
+  }
+  if (load.kind === "error") {
+    return (
+      <div className="state-error" role="alert">
+        <p>{load.message}</p>
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          onClick={() => window.location.reload()}
+          style={{ marginTop: "var(--space-2)" }}
+        >
+          Refresh Page
+        </button>
+      </div>
+    );
+  }
   return <QuoteBuilderReady catalog={load.catalog} />;
 }

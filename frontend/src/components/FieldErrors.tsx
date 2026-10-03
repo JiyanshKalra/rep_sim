@@ -11,7 +11,7 @@ export default function FieldErrors({ id, messages }: Props) {
   return (
     <>
       {messages.map((msg) => (
-        <p key={msg} id={id} className="field-error">
+        <p key={msg} id={id} className="form-error" role="alert">
           {msg}
         </p>
       ))}

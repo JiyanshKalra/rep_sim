@@ -17,7 +17,15 @@ interface LineRowProps {
   onRemove: () => void;
 }
 
-interface ProductSelectProps {
+function ProductSelect({
+  index,
+  sku,
+  products,
+  usedSkus,
+  currency,
+  errors,
+  onChangeSku,
+}: {
   index: number;
   sku: string;
   products: Product[];
@@ -25,19 +33,20 @@ interface ProductSelectProps {
   currency: string;
   errors: ApiErrorItem[];
   onChangeSku: (sku: string) => void;
-}
-
-function ProductSelect({ index, sku, products, usedSkus, currency, errors, onChangeSku }: ProductSelectProps) {
+}) {
   const otherUsed = usedSkus.filter((s) => s !== sku);
   const available = products.filter((p) => !otherUsed.includes(p.sku));
   const errId = "line-sku-error-" + index;
   const skuErrors = messagesFor(errors, "lines[" + index + "].sku");
 
   return (
-    <div className="line-field">
-      <label htmlFor={"line-sku-" + index}>Product</label>
+    <div className="form-field">
+      <label htmlFor={"line-sku-" + index} className="form-label">
+        Product
+      </label>
       <select
         id={"line-sku-" + index}
+        className="form-select"
         value={sku}
         aria-invalid={skuErrors.length > 0 ? "true" : undefined}
         aria-describedby={skuErrors.length > 0 ? errId : undefined}
@@ -45,7 +54,7 @@ function ProductSelect({ index, sku, products, usedSkus, currency, errors, onCha
       >
         {available.map((p) => (
           <option key={p.sku} value={p.sku}>
-            {p.name} - {formatMoney(p.unit_price, currency)}
+            {p.name} — {formatMoney(p.unit_price, currency)}
           </option>
         ))}
       </select>
@@ -69,13 +78,16 @@ function QuantityInput({
   const qtyErrors = messagesFor(errors, "lines[" + index + "].quantity");
 
   return (
-    <div className="line-field">
-      <label htmlFor={"line-qty-" + index}>Quantity</label>
+    <div className="form-field product-line-qty">
+      <label htmlFor={"line-qty-" + index} className="form-label">
+        Qty
+      </label>
       {/* type="text" with inputMode so typed string reaches API unchanged (R5) */}
       <input
         id={"line-qty-" + index}
         type="text"
         inputMode="numeric"
+        className="form-input"
         value={quantity}
         aria-invalid={qtyErrors.length > 0 ? "true" : undefined}
         aria-describedby={qtyErrors.length > 0 ? errId : undefined}
@@ -86,12 +98,21 @@ function QuantityInput({
   );
 }
 
-export default function LineRow({ line, index, products, usedSkus, currency, errors, onChange, onRemove }: LineRowProps) {
+export default function LineRow({
+  line,
+  index,
+  products,
+  usedSkus,
+  currency,
+  errors,
+  onChange,
+  onRemove,
+}: LineRowProps) {
   const prod = products.find((p) => p.sku === line.sku);
   const removeLabel = "Remove line " + (index + 1) + (prod ? " (" + prod.name + ")" : "");
 
   return (
-    <div className="line-row">
+    <div className="product-line">
       <ProductSelect
         index={index}
         sku={line.sku}
@@ -107,9 +128,16 @@ export default function LineRow({ line, index, products, usedSkus, currency, err
         errors={errors}
         onChangeQty={(quantity) => onChange({ ...line, quantity })}
       />
-      <button type="button" className="btn-plain" aria-label={removeLabel} onClick={onRemove}>
-        Remove
-      </button>
+      <div className="product-line-remove-col">
+        <button
+          type="button"
+          className="btn btn-danger btn-sm"
+          aria-label={removeLabel}
+          onClick={onRemove}
+        >
+          Remove
+        </button>
+      </div>
     </div>
   );
 }

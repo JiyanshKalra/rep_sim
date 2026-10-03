@@ -23,14 +23,26 @@ function newLineId(): string {
   return "line-" + lineIdCounter;
 }
 
-function CustomerNameField({ value, saveErrors, onChange }: { value: string; saveErrors: ApiErrorItem[]; onChange: (val: string) => void }) {
+function CustomerNameField({
+  value,
+  saveErrors,
+  onChange,
+}: {
+  value: string;
+  saveErrors: ApiErrorItem[];
+  onChange: (val: string) => void;
+}) {
   const nameErrors = messagesFor(saveErrors, "customer_name");
   return (
-    <div className="field">
-      <label htmlFor="customer-name">Customer name</label>
+    <div className="form-field">
+      <label htmlFor="customer-name" className="form-label">
+        Customer name
+      </label>
       <input
         id="customer-name"
         type="text"
+        className="form-input"
+        placeholder="e.g. Acme Corp"
         value={value}
         aria-invalid={nameErrors.length > 0 ? "true" : undefined}
         aria-describedby={nameErrors.length > 0 ? "customer-name-error" : undefined}
@@ -41,32 +53,58 @@ function CustomerNameField({ value, saveErrors, onChange }: { value: string; sav
   );
 }
 
-function SeatsField({ seats, tiers, errors, onChange }: { seats: string; tiers: Catalog["tiers"]; errors: ApiErrorItem[]; onChange: (val: string) => void }) {
+function SeatsField({
+  seats,
+  tiers,
+  errors,
+  onChange,
+}: {
+  seats: string;
+  tiers: Catalog["tiers"];
+  errors: ApiErrorItem[];
+  onChange: (val: string) => void;
+}) {
   const seatsErrors = messagesFor(errors, "seats");
   return (
-    <div className="field">
-      <label htmlFor="seats">Seats</label>
+    <div className="form-field">
+      <label htmlFor="seats" className="form-label">
+        Seats
+      </label>
       {/* type="text" with inputMode so typed string reaches API unchanged (R5) */}
       <input
         id="seats"
         type="text"
         inputMode="numeric"
+        className="form-input"
+        placeholder="e.g. 25"
         value={seats}
         aria-invalid={seatsErrors.length > 0 ? "true" : undefined}
         aria-describedby={seatsErrors.length > 0 ? "seats-error" : undefined}
         onChange={(e) => onChange(e.target.value)}
       />
       <FieldErrors id="seats-error" messages={seatsErrors} />
-      <ul className="help-list">
+      <div className="tier-hint-list">
         {tiers.map((t) => (
-          <li key={t.code}>{describeTier(t)}</li>
+          <span key={t.code} className="tier-hint-item">
+            {describeTier(t)}
+          </span>
         ))}
-      </ul>
+      </div>
     </div>
   );
 }
 
-function ProductsFieldset({ lines, catalog, errors, onChangeLines }: { lines: LineFormState[]; catalog: Catalog; errors: ApiErrorItem[]; onChangeLines: (next: LineFormState[]) => void }) {
+function ProductsFieldset({
+  lines,
+  catalog,
+  errors,
+  onChangeLines,
+}: {
+  lines: LineFormState[];
+  catalog: Catalog;
+  errors: ApiErrorItem[];
+  onChangeLines: (next: LineFormState[]) => void;
+}) {
   const usedSkus = lines.map((l) => l.sku);
   const allUsed = usedSkus.length >= catalog.products.length;
   const firstUnused = catalog.products.find((p) => !usedSkus.includes(p.sku));
@@ -76,73 +114,190 @@ function ProductsFieldset({ lines, catalog, errors, onChangeLines }: { lines: Li
     onChangeLines([...lines, { id: newLineId(), sku: firstUnused.sku, quantity: "1" }]);
   }
 
+  const lineErrors = messagesFor(errors, "lines");
+
   return (
-    <fieldset className="products-fieldset">
-      <legend>Products</legend>
-      <FieldErrors id="lines-error" messages={messagesFor(errors, "lines")} />
-      {lines.map((line, i) => (
-        <LineRow
-          key={line.id}
-          line={line}
-          index={i}
-          products={catalog.products}
-          usedSkus={usedSkus}
-          currency={catalog.currency}
-          errors={errors}
-          onChange={(next) => onChangeLines(lines.map((l, idx) => (idx === i ? next : l)))}
-          onRemove={() => onChangeLines(lines.filter((_, idx) => idx !== i))}
-        />
-      ))}
-      <button type="button" className="btn-plain" disabled={allUsed} onClick={addLine}>
-        Add product
-      </button>
-    </fieldset>
+    <div className="form-section">
+      <div className="form-section-header">
+        <h2 className="form-section-title">Products</h2>
+      </div>
+      <div className="form-section-body">
+        <FieldErrors id="lines-error" messages={lineErrors} />
+        {lines.length === 0 ? (
+          <p className="form-help" style={{ marginBottom: "var(--space-3)" }}>
+            No products added yet. Click below to add a product line to this quote.
+          </p>
+        ) : (
+          <div className="product-lines-list">
+            {lines.map((line, i) => (
+              <LineRow
+                key={line.id}
+                line={line}
+                index={i}
+                products={catalog.products}
+                usedSkus={usedSkus}
+                currency={catalog.currency}
+                errors={errors}
+                onChange={(next) => onChangeLines(lines.map((l, idx) => (idx === i ? next : l)))}
+                onRemove={() => onChangeLines(lines.filter((_, idx) => idx !== i))}
+              />
+            ))}
+          </div>
+        )}
+        <div className="add-product-row">
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            disabled={allUsed}
+            onClick={addLine}
+          >
+            + Add Product
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
-function DiscountField({ discountPct, maxDiscountPct, errors, onChange }: { discountPct: string; maxDiscountPct: Percent | null; errors: ApiErrorItem[]; onChange: (val: string) => void }) {
+function DiscountField({
+  discountPct,
+  maxDiscountPct,
+  errors,
+  onChange,
+}: {
+  discountPct: string;
+  maxDiscountPct: Percent | null;
+  errors: ApiErrorItem[];
+  onChange: (val: string) => void;
+}) {
   const discountErrors = messagesFor(errors, "discount_pct");
-  const helpText = maxDiscountPct !== null ? "Maximum for this quote: " + maxDiscountPct + "%" : "Enter 0 for no discount";
+  const helpText =
+    maxDiscountPct !== null
+      ? "Maximum allowed for this tier: " + maxDiscountPct + "%"
+      : "Enter 0 for standard pricing";
+
   return (
-    <div className="field">
-      <label htmlFor="discount-pct">Discount (%)</label>
+    <div className="form-field">
+      <label htmlFor="discount-pct" className="form-label">
+        Discount (%)
+      </label>
       {/* type="text" with inputMode="decimal" so typed string reaches API unchanged (R5) */}
       <input
         id="discount-pct"
         type="text"
         inputMode="decimal"
+        className="form-input"
+        placeholder="0"
         value={discountPct}
         aria-invalid={discountErrors.length > 0 ? "true" : undefined}
         aria-describedby={discountErrors.length > 0 ? "discount-error" : undefined}
         onChange={(e) => onChange(e.target.value)}
       />
       <FieldErrors id="discount-error" messages={discountErrors} />
-      <p className="field-help">{helpText}</p>
+      <p className="form-help">{helpText}</p>
     </div>
   );
 }
 
-function CommitmentField({ checked, errors, onChange }: { checked: boolean; errors: ApiErrorItem[]; onChange: (val: boolean) => void }) {
+function CommitmentField({
+  checked,
+  errors,
+  onChange,
+}: {
+  checked: boolean;
+  errors: ApiErrorItem[];
+  onChange: (val: boolean) => void;
+}) {
   return (
-    <div className="field field-inline">
-      <input id="annual-commitment" type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
-      <label htmlFor="annual-commitment">Annual commitment</label>
-      <FieldErrors id="annual-commitment-error" messages={messagesFor(errors, "annual_commitment")} />
+    <div className={"commitment-box" + (checked ? " is-selected" : "")}>
+      <label className="form-check" htmlFor="annual-commitment">
+        <input
+          id="annual-commitment"
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => onChange(e.target.checked)}
+        />
+        <span className="form-check-label">Annual Commitment</span>
+      </label>
+      <p className="form-check-hint">12-month agreement. Influences approval rules.</p>
+      <FieldErrors
+        id="annual-commitment-error"
+        messages={messagesFor(errors, "annual_commitment")}
+      />
     </div>
   );
 }
 
-export default function QuoteForm({ form, catalog, errors, saveErrors, isSaving, maxDiscountPct, onChange }: Props) {
+export default function QuoteForm({
+  form,
+  catalog,
+  errors,
+  saveErrors,
+  isSaving,
+  maxDiscountPct,
+  onChange,
+}: Props) {
   return (
-    <div className="quote-form">
-      <CustomerNameField value={form.customerName} saveErrors={saveErrors} onChange={(customerName) => onChange({ ...form, customerName })} />
-      <SeatsField seats={form.seats} tiers={catalog.tiers} errors={errors} onChange={(seats) => onChange({ ...form, seats })} />
-      <ProductsFieldset lines={form.lines} catalog={catalog} errors={errors} onChangeLines={(lines) => onChange({ ...form, lines })} />
-      <DiscountField discountPct={form.discountPct} maxDiscountPct={maxDiscountPct} errors={errors} onChange={(discountPct) => onChange({ ...form, discountPct })} />
-      <CommitmentField checked={form.annualCommitment} errors={errors} onChange={(annualCommitment) => onChange({ ...form, annualCommitment })} />
-      <button type="submit" className="btn-primary" disabled={isSaving}>
-        {isSaving ? "Saving..." : "Save quote"}
-      </button>
+    <div className="builder-form-col">
+      <div className="form-section">
+        <div className="form-section-header">
+          <h2 className="form-section-title">Customer &amp; Seats</h2>
+        </div>
+        <div className="form-section-body">
+          <div className="customer-grid">
+            <CustomerNameField
+              value={form.customerName}
+              saveErrors={saveErrors}
+              onChange={(customerName) => onChange({ ...form, customerName })}
+            />
+            <SeatsField
+              seats={form.seats}
+              tiers={catalog.tiers}
+              errors={errors}
+              onChange={(seats) => onChange({ ...form, seats })}
+            />
+          </div>
+        </div>
+      </div>
+
+      <ProductsFieldset
+        lines={form.lines}
+        catalog={catalog}
+        errors={errors}
+        onChangeLines={(lines) => onChange({ ...form, lines })}
+      />
+
+      <div className="form-section">
+        <div className="form-section-header">
+          <h2 className="form-section-title">Discount &amp; Terms</h2>
+        </div>
+        <div className="form-section-body">
+          <div className="discount-commitment-grid">
+            <DiscountField
+              discountPct={form.discountPct}
+              maxDiscountPct={maxDiscountPct}
+              errors={errors}
+              onChange={(discountPct) => onChange({ ...form, discountPct })}
+            />
+            <CommitmentField
+              checked={form.annualCommitment}
+              errors={errors}
+              onChange={(annualCommitment) => onChange({ ...form, annualCommitment })}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="form-footer">
+        <button
+          type="submit"
+          className="btn btn-primary"
+          style={{ width: "100%", padding: "12px 20px", fontSize: "var(--font-size-md)" }}
+          disabled={isSaving}
+        >
+          {isSaving ? "Saving Quote..." : "Save Quote"}
+        </button>
+      </div>
     </div>
   );
 }

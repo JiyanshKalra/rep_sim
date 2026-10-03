@@ -11,72 +11,125 @@ interface Props {
   isBlank: boolean;
 }
 
-function StatusLine({ view }: { view: CalculationView }) {
-  if (view.isUpdating) return <p role="status">Updating...</p>;
-  if (view.errors.length > 0) return <p role="status">Out of date: fix the highlighted fields</p>;
-  if (view.failureMessage !== null) return <p role="status">{view.failureMessage}</p>;
-  if (view.calculation !== null) return <p role="status">Up to date</p>;
+function StatusIndicator({ view }: { view: CalculationView }) {
+  if (view.isUpdating) {
+    return (
+      <span className="preview-calc-status is-updating" role="status">
+        Updating...
+      </span>
+    );
+  }
+  if (view.errors.length > 0) {
+    return (
+      <span className="preview-calc-status is-error" role="status">
+        Out of date
+      </span>
+    );
+  }
+  if (view.failureMessage !== null) {
+    return (
+      <span className="preview-calc-status is-error" role="status">
+        {view.failureMessage}
+      </span>
+    );
+  }
+  if (view.calculation !== null) {
+    return (
+      <span className="preview-calc-status" role="status">
+        Up to date
+      </span>
+    );
+  }
   return null;
 }
 
 function EmptyState({ view, isBlank }: { view: CalculationView; isBlank: boolean }) {
-  if (isBlank) return <p>Enter the seats and add a product to see the live preview.</p>;
-  if (view.errors.length > 0) return <p>Fix the highlighted fields to see the preview.</p>;
-  return <p>Calculating...</p>;
+  if (isBlank) {
+    return (
+      <div className="preview-empty">
+        <p className="preview-empty-title">Live Pricing Summary</p>
+        <p className="preview-empty-body">
+          Enter seat count and add at least one product line to calculate pricing.
+        </p>
+      </div>
+    );
+  }
+  if (view.errors.length > 0) {
+    return (
+      <div className="preview-empty">
+        <p className="preview-empty-title">Action Required</p>
+        <p className="preview-empty-body">
+          Resolve the highlighted errors in the form to generate quote pricing.
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div className="preview-empty">
+      <p className="preview-empty-body">Calculating authoritative pricing...</p>
+    </div>
+  );
 }
 
-function LineTable({ calc, currency }: { calc: Calculation; currency: string }) {
+function LineItemsSummary({ calc, currency }: { calc: Calculation; currency: string }) {
   return (
-    <table className="preview-table">
-      <caption>Products</caption>
-      <thead>
-        <tr>
-          <th scope="col">Product</th>
-          <th scope="col" className="num-col">Quantity</th>
-          <th scope="col" className="num-col">Unit price</th>
-          <th scope="col" className="num-col">Line total</th>
-        </tr>
-      </thead>
-      <tbody>
-        {calc.lines.map((line) => (
-          <tr key={line.sku}>
-            <td>{line.name}</td>
-            <td className="num-col">{line.quantity}</td>
-            <td className="num-col">{formatMoney(line.unit_price, currency)}</td>
-            <td className="num-col">{formatMoney(line.line_total, currency)}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
+    <div className="preview-lines" aria-label="Quoted products summary">
+      {calc.lines.map((line) => (
+        <div key={line.sku} className="preview-line">
+          <span className="preview-line-name">{line.name}</span>
+          <span className="preview-line-detail">
+            {line.quantity} × {formatMoney(line.unit_price, currency)}
+          </span>
+        </div>
+      ))}
+    </div>
   );
 }
 
 function TotalsBlock({ calc, currency }: { calc: Calculation; currency: string }) {
-  const discountLabel =
-    formatPercent(calc.discount_pct) + " (-" + formatMoney(calc.discount_amount, currency) + ")";
   return (
-    <dl className="totals">
-      <dt>Subtotal</dt>
-      <dd>{formatMoney(calc.subtotal, currency)}</dd>
-      <dt>Discount</dt>
-      <dd>{discountLabel}</dd>
-      <dt>Total</dt>
-      <dd>{formatMoney(calc.total, currency)}</dd>
-    </dl>
+    <div className="preview-totals">
+      <div className="totals-row">
+        <span className="totals-label">Subtotal</span>
+        <span className="totals-value">{formatMoney(calc.subtotal, currency)}</span>
+      </div>
+      <div className="totals-row totals-row-discount">
+        <span className="totals-label">Discount ({formatPercent(calc.discount_pct)})</span>
+        <span className="totals-value">-{formatMoney(calc.discount_amount, currency)}</span>
+      </div>
+      <hr className="totals-divider" />
+      <div className="totals-row totals-row-total">
+        <span className="totals-label">Total</span>
+        <span className="totals-value">{formatMoney(calc.total, currency)}</span>
+      </div>
+    </div>
   );
 }
 
-function ApprovalBox({ calc, rules, currency }: { calc: Calculation; rules: ApprovalRules; currency: string }) {
-  return (
-    <div className={calc.approval_required ? "approval-required" : "approval-ok"}>
-      <h3>{calc.approval_required ? "Approval required" : "No approval required"}</h3>
-      {calc.approval_reasons.length > 0 && (
-        <ul>
+function ApprovalBox({
+  calc,
+  rules,
+  currency,
+}: {
+  calc: Calculation;
+  rules: ApprovalRules;
+  currency: string;
+}) {
+  if (calc.approval_required) {
+    return (
+      <div className="approval-block approval-block-required">
+        <div className="approval-heading approval-heading-required">Approval Required</div>
+        <ul className="approval-reasons">
           {calc.approval_reasons.map((reason) => (
             <li key={reason}>{describeReason(reason, rules, currency)}</li>
           ))}
         </ul>
-      )}
+      </div>
+    );
+  }
+  return (
+    <div className="approval-block approval-block-ok">
+      <div className="approval-heading approval-heading-ok">Approval Not Required</div>
     </div>
   );
 }
@@ -90,16 +143,25 @@ export default function QuotePreview({ view, approvalRules, isBlank }: Props) {
 
   return (
     <section aria-labelledby="preview-heading" className="quote-preview">
-      <h2 id="preview-heading">Quote preview</h2>
-      <StatusLine view={view} />
+      <div className="preview-header">
+        <h2 id="preview-heading" className="preview-heading">
+          Quote Preview
+        </h2>
+        <StatusIndicator view={view} />
+      </div>
       {calculation === null ? (
         <EmptyState view={view} isBlank={isBlank} />
       ) : (
-        <div className={isStale ? "stale" : ""}>
-          <p className="tier-info">
-            {calculation.tier} &mdash; max discount {formatPercent(calculation.max_discount_pct)}
-          </p>
-          <LineTable calc={calculation} currency={currency} />
+        <div className={"preview-body" + (isStale ? " preview-stale" : "")}>
+          <div className="preview-tier-row">
+            <span className={"badge badge-tier-" + calculation.tier.toLowerCase()}>
+              {calculation.tier} Tier
+            </span>
+            <span className="preview-tier-seats">
+              max {formatPercent(calculation.max_discount_pct)} discount
+            </span>
+          </div>
+          <LineItemsSummary calc={calculation} currency={currency} />
           <TotalsBlock calc={calculation} currency={currency} />
           <ApprovalBox calc={calculation} rules={approvalRules} currency={currency} />
         </div>

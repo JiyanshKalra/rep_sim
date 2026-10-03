@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { Catalog, QuoteStatus, SavedQuote } from "../types";
 import { changeQuoteStatus, getCatalog, getQuote } from "../api";
-import { describeStatus } from "../display";
+import { describeStatus, formatMoney, formatPercent, formatTimestamp } from "../display";
 import QuoteResult from "./QuoteResult";
 import StatusActions from "./StatusActions";
 
@@ -82,23 +82,72 @@ function QuoteReviewReady({
     onQuoteUpdate,
   );
   const hasDrift = quote.lines.some((line) => line.catalog_status !== "ok");
+  const currency = quote.result.currency;
 
   return (
-    <div className="quote-review">
-      <h1>{quote.customer_name}</h1>
-      <p className="status-text">Status: {describeStatus(quote.status)}</p>
+    <div className="review-layout">
+      {/* Top Identity Hero: WHO, HOW MUCH, WHAT STATUS, DOES IT NEED APPROVAL */}
+      <div className="review-identity">
+        <div className="review-identity-header">
+          <div>
+            <h1 className="review-customer-name">{quote.customer_name}</h1>
+            <p className="page-subtitle">Quote Reference: {quote.id}</p>
+          </div>
+          <div className="review-identity-meta">
+            <span className={"badge badge-status-" + quote.status.toLowerCase()}>
+              {describeStatus(quote.status)}
+            </span>
+            <span className={"badge badge-tier-" + quote.result.tier.toLowerCase()}>
+              {quote.result.tier} Tier
+            </span>
+          </div>
+        </div>
+        <div className="review-identity-body">
+          <div className="review-stat">
+            <div className="review-stat-label">Total Payable</div>
+            <div className="review-stat-value-total">{formatMoney(quote.result.total, currency)}</div>
+          </div>
+          <div className="review-stat">
+            <div className="review-stat-label">Seats &amp; Tier</div>
+            <div className="review-stat-value">
+              {quote.seats} seats &bull; {quote.result.tier}
+            </div>
+          </div>
+          <div className="review-stat">
+            <div className="review-stat-label">Discount &amp; Terms</div>
+            <div className="review-stat-value">
+              {formatPercent(quote.result.discount_pct)} discount &bull;{" "}
+              {quote.annual_commitment ? "Annual commitment" : "No commitment"}
+            </div>
+          </div>
+          <div className="review-stat">
+            <div className="review-stat-label">Quoted On</div>
+            <div className="review-stat-value">{formatTimestamp(quote.created_at)}</div>
+          </div>
+        </div>
+      </div>
+
       {alertMessage && (
         <div role="alert" className="problems-box">
           <p>{alertMessage}</p>
         </div>
       )}
+
       {hasDrift && (
-        <div role="status" className="banner">
-          Some products changed in the catalog after this quote was saved. The prices below are the
-          prices that were quoted.
+        <div role="status" className="alert alert-warning">
+          <span>
+            <strong>Catalog Drift:</strong> Some products changed in the catalog after this quote was
+            saved. The prices below reflect the original quoted snapshot.
+          </span>
         </div>
       )}
-      <QuoteResult quote={quote} currency={quote.result.currency} approvalRules={catalog.approval_rules} />
+
+      <QuoteResult
+        quote={quote}
+        currency={quote.result.currency}
+        approvalRules={catalog.approval_rules}
+      />
+
       <StatusActions
         allowed={quote.allowed_next_statuses}
         isChanging={isChanging}
@@ -114,12 +163,16 @@ export default function QuoteReview() {
   const [state, setQuote] = useQuoteReviewData(id);
 
   if (!id) return <p>Quote not found</p>;
-  if (state.kind === "loading") return <p>Loading quote...</p>;
+  if (state.kind === "loading") {
+    return <div className="state-loading">Loading quote details...</div>;
+  }
   if (state.kind === "error") {
     return (
-      <div>
+      <div className="state-error" role="alert">
         <p>{state.message}</p>
-        <Link href="/quotes">Back to saved quotes</Link>
+        <Link href="/quotes" className="btn btn-secondary btn-sm" style={{ marginTop: "var(--space-2)" }}>
+          Back to saved quotes
+        </Link>
       </div>
     );
   }
