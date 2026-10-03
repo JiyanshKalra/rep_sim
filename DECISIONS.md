@@ -1,4 +1,4 @@
-﻿# Design Decisions
+# Design Decisions
 
 ## 1. Decisions required by the assignment
 1. Same product added twice: rejected by the backend with code `sku_duplicate` (422) at `lines[i].sku`; the UI hides already-added SKUs. Price is fixed per SKU, so one line with a bigger quantity covers every legitimate case.
@@ -27,10 +27,15 @@ One line each: any submitted quote can be approved or rejected whether or not ap
 - Wrote BUSINESS_RULES R1-R7 and golden cases. Added input-parsing rules: integers and discounts accept numeric strings so the form can send what the rep typed and the API is the only validator. Approval reasons are always listed in a fixed order.
 
 ## 5. AI usage
-TODO
+AI (Gemini / Antigravity coding assistant) was used as a development assistant throughout the project to assist with implementation speed, drafting unit test cases, scaffolding TypeScript types, and formatting documentation. All architectural decisions, rule formulations in `BUSINESS_RULES.md`, edge-case reviews, manual verification, and test execution were reviewed and validated as part of the engineering workflow.
 
 ## 6. Limitations
-TODO
+- **JSON File Persistence**: Quotes are stored in a local single-file JSON database (`backend/data/quotes.json`) guarded by a file lock. This is suitable for demo and single-process use, but lacks support for multi-process concurrency, database transactions, indexing, or horizontal scaling.
+- **Authentication & Roles**: The application does not include authentication, user sessions, or role-based access control (RBAC). Any user can draft, submit, approve, or reject quotes.
+- **Static Catalog**: The product catalog is loaded from a static file. Historical quotes store point-in-time snapshots with read-time status flags (`price_changed`, `removed`) rather than active catalog synchronisation.
 
 ## 7. What I would do with another day
-TODO
+- **Database Persistence**: Migrate from JSON file storage to a relational database (PostgreSQL with SQLAlchemy/SQLModel and Alembic migrations) for atomic transactions and concurrent multi-user support.
+- **Authentication & Role-Based Access Control**: Implement user authentication with separate permissions for sales representatives (draft and submit quotes) and deal desk managers (review, approve, or reject quotes).
+- **End-to-End Testing**: Set up Playwright/Cypress end-to-end integration tests to validate the complete user journey across frontend and backend.
+- **Audit Logging**: Add an audit trail table tracking all quote modifications and status transitions with timestamps and user attribution.
