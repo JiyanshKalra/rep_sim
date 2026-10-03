@@ -1,7 +1,7 @@
 // Top-level "use client" component: loads the catalog, holds form state, wires preview and save.
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ApiErrorItem, Catalog, QuoteFormState } from "../types";
 import { getCatalog, saveQuote } from "../api";
@@ -40,9 +40,14 @@ function useQuoteSave(form: QuoteFormState) {
   const router = useRouter();
   const [saveErrors, setSaveErrors] = useState<ApiErrorItem[]>([]);
   const [isSaving, setIsSaving] = useState(false);
+  // React state updates are asynchronous, so a fast second submit passes the check.
+  // A ref updates synchronously to guard against duplicate submissions immediately.
+  const submittingRef = useRef(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setSaveErrors([]);
     setIsSaving(true);
     const res = await saveQuote(toSavePayload(form));
@@ -52,6 +57,7 @@ function useQuoteSave(form: QuoteFormState) {
       router.push("/quotes/" + res.data.id);
       return;
     }
+    submittingRef.current = false;
     if (res.kind === "api") setSaveErrors(res.errors);
     else if (res.kind === "network") setSaveErrors([{ code: "network", field: null, message: res.message }]);
   }
