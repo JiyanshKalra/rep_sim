@@ -58,6 +58,8 @@ export interface Calculation {
   total: Money;
   approval_required: boolean;
   approval_reasons: ApprovalReason[];
+  // Lines of plain English written by the backend (rule R8); the UI shows them as returned.
+  explanation: string[];
 }
 
 export interface SavedLine extends CalculatedLine {
