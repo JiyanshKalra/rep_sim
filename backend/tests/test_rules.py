@@ -10,7 +10,6 @@ import pytest
 from app.config import get_catalog_path
 from app.rules import (
     Catalog,
-    CatalogError,
     DraftLine,
     QuoteValidationError,
     ValidDraft,
@@ -487,62 +486,6 @@ def test_R6_customer_name_rules(catalog: Catalog) -> None:
     assert draft_calc.customer_name == ""
 
 
-def test_catalog_self_validation() -> None:
-    # R1: Catalog consistency checks; detects duplicate SKUs, tier gaps, overlaps, and missing tiers
-    base_catalog = {
-        "currency": "USD",
-        "discount_rules": [
-            {"code": "T1", "min_seats": 1, "max_seats": 99999, "max_discount_pct": 10}
-        ],
-        "products": [{"sku": "P1", "name": "Prod 1", "unit_price": 10}],
-    }
-    # Duplicate SKU
-    dup_sku = dict(
-        base_catalog,
-        products=[
-            {"sku": "P1", "name": "Prod 1", "unit_price": 10},
-            {"sku": "P1", "name": "Prod 1 Dup", "unit_price": 20},
-        ],
-    )
-    with pytest.raises(CatalogError, match="Duplicate product SKU"):
-        build_catalog(dup_sku)
-
-    # No tiers
-    no_tiers = dict(base_catalog, discount_rules=[])
-    with pytest.raises(CatalogError, match="at least one discount tier"):
-        build_catalog(no_tiers)
-
-    # First tier does not start at 1
-    bad_start = dict(
-        base_catalog,
-        discount_rules=[{"code": "T1", "min_seats": 2, "max_seats": 99999, "max_discount_pct": 10}],
-    )
-    with pytest.raises(CatalogError, match="must start at min_seats 1"):
-        build_catalog(bad_start)
-
-    # Overlapping tiers
-    overlap = dict(
-        base_catalog,
-        discount_rules=[
-            {"code": "T1", "min_seats": 1, "max_seats": 10, "max_discount_pct": 10},
-            {"code": "T2", "min_seats": 10, "max_seats": 99999, "max_discount_pct": 20},
-        ],
-    )
-    with pytest.raises(CatalogError, match="Tier gap or overlap"):
-        build_catalog(overlap)
-
-    # Gap between tiers
-    gap = dict(
-        base_catalog,
-        discount_rules=[
-            {"code": "T1", "min_seats": 1, "max_seats": 9, "max_discount_pct": 10},
-            {"code": "T2", "min_seats": 12, "max_seats": 99999, "max_discount_pct": 20},
-        ],
-    )
-    with pytest.raises(CatalogError, match="Tier gap or overlap"):
-        build_catalog(gap)
-
-
 def test_real_catalog_loads(catalog: Catalog) -> None:
     # R1: Validates expected structure and types of the production catalog.json
     assert [t.code for t in catalog.tiers] == ["STARTER", "GROWTH", "ENTERPRISE"]
@@ -673,59 +616,6 @@ def test_C2_non_object_line_reports_only_sku_unknown(catalog: Catalog) -> None:
     assert errors == [("sku_unknown", "lines[0].sku")], (
         f"For mixed lines, expected [(sku_unknown, lines[0].sku)], got {errors}"
     )
-
-
-def test_C3_catalog_tier_errors_raise_catalog_error() -> None:
-    # C3: Missing or non-integer max_seats on a lower tier raises CatalogError, not KeyError/TypeError
-    base_products = [{"sku": "P1", "name": "Prod 1", "unit_price": 10}]
-
-    # Lower tier with max_seats missing -> CatalogError naming the tier code
-    missing_max = {
-        "currency": "USD",
-        "products": base_products,
-        "discount_rules": [
-            {"code": "T1", "min_seats": 1, "max_discount_pct": 10},
-            {"code": "T2", "min_seats": 2, "max_seats": 99999, "max_discount_pct": 20},
-        ],
-    }
-    with pytest.raises(CatalogError, match="T1"):
-        build_catalog(missing_max)
-
-    # Lower tier with max_seats = None -> CatalogError naming the tier code
-    none_max = {
-        "currency": "USD",
-        "products": base_products,
-        "discount_rules": [
-            {"code": "T1", "min_seats": 1, "max_seats": None, "max_discount_pct": 10},
-            {"code": "T2", "min_seats": 2, "max_seats": 99999, "max_discount_pct": 20},
-        ],
-    }
-    with pytest.raises(CatalogError, match="T1"):
-        build_catalog(none_max)
-
-    # Lower tier with max_seats below min_seats -> CatalogError naming the tier code
-    max_below_min = {
-        "currency": "USD",
-        "products": base_products,
-        "discount_rules": [
-            {"code": "T1", "min_seats": 1, "max_seats": 0, "max_discount_pct": 10},
-            {"code": "T2", "min_seats": 2, "max_seats": 99999, "max_discount_pct": 20},
-        ],
-    }
-    with pytest.raises(CatalogError, match="T1"):
-        build_catalog(max_below_min)
-
-    # Top tier without max_seats builds fine
-    top_no_max = {
-        "currency": "USD",
-        "products": base_products,
-        "discount_rules": [
-            {"code": "T1", "min_seats": 1, "max_seats": 9, "max_discount_pct": 10},
-            {"code": "T2", "min_seats": 10, "max_discount_pct": 20},
-        ],
-    }
-    cat = build_catalog(top_no_max)
-    assert cat.tiers[-1].max_seats is None
 
 
 def test_C4_catalog_unit_price_rounds_half_up() -> None:

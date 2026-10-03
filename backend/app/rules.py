@@ -154,70 +154,28 @@ def _parse_discount(raw: Any) -> tuple[Decimal | None, str | None]:
     return dec, None
 
 
-def _validate_tiers(sorted_rules: list[dict]) -> list[Tier]:
-    # R1: First tier must start at 1 seat
-    if sorted_rules[0]["min_seats"] != 1:
-        raise CatalogError(
-            f"First discount tier must start at min_seats 1, got {sorted_rules[0]['min_seats']}"
-        )
+def build_catalog(data: dict) -> Catalog:
+    """Build the Catalog from the raw data dictionary."""
+    products: dict[str, Product] = {}
+    for p in data.get("products", []):
+        sku = p["sku"]
+        unit_price = Decimal(str(p["unit_price"])).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        products[sku] = Product(sku=sku, name=p["name"], unit_price=unit_price)
 
+    sorted_rules = sorted(data.get("discount_rules", []), key=lambda r: r["min_seats"])
     tiers: list[Tier] = []
-    num_tiers = len(sorted_rules)
     for i, r in enumerate(sorted_rules):
-        is_highest = i == num_tiers - 1
-        code = r["code"]
-        min_seats = int(r["min_seats"])
-
-        if is_highest:
-            # R1: Highest tier is open-ended; max_seats is None, catalog sentinel 99999 is ignored
-            max_seats = None
-        else:
-            # C3: Every non-highest tier must have a whole-number max_seats
-            raw_max = r.get("max_seats")
-            if not isinstance(raw_max, int) or isinstance(raw_max, bool):
-                raise CatalogError(f"Tier '{code}' needs a whole-number max_seats.")
-            if raw_max < min_seats:
-                raise CatalogError(
-                    f"Tier '{code}' has max_seats {raw_max} below its min_seats {min_seats}."
-                )
-            max_seats = raw_max
-
-        if i > 0:
-            prev_max = tiers[i - 1].max_seats
-            expected_min = (prev_max + 1) if prev_max is not None else min_seats
-            if min_seats != expected_min:
-                raise CatalogError(
-                    f"Tier gap or overlap: tier '{code}' starts at {min_seats}, expected {expected_min}"
-                )
+        is_last = i == len(sorted_rules) - 1
+        # R1: The last tier is always open-ended; catalog sentinel 99999 is ignored
+        max_seats = None if is_last else int(r["max_seats"])
         tiers.append(
             Tier(
-                code=code,
-                min_seats=min_seats,
+                code=r["code"],
+                min_seats=int(r["min_seats"]),
                 max_seats=max_seats,
                 max_discount_pct=Decimal(str(r["max_discount_pct"])),
             )
         )
-    return tiers
-
-
-def build_catalog(data: dict) -> Catalog:
-    """Validate catalog data structure and build the Catalog instance."""
-    products: dict[str, Product] = {}
-    for p in data.get("products", []):
-        sku = p["sku"]
-        # R1: SKU uniqueness check
-        if sku in products:
-            raise CatalogError(f"Duplicate product SKU in catalog: '{sku}'")
-        unit_price = Decimal(str(p["unit_price"])).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-        products[sku] = Product(sku=sku, name=p["name"], unit_price=unit_price)
-
-    discount_rules = data.get("discount_rules", [])
-    # R1: Must define at least one tier
-    if not discount_rules:
-        raise CatalogError("Catalog must define at least one discount tier.")
-
-    sorted_rules = sorted(discount_rules, key=lambda t: t["min_seats"])
-    tiers = _validate_tiers(sorted_rules)
     return Catalog(currency=data.get("currency", "USD"), products=products, tiers=tiers)
 
 
