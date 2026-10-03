@@ -213,7 +213,7 @@ def build_catalog(data: dict) -> Catalog:
         # R1: SKU uniqueness check
         if sku in products:
             raise CatalogError(f"Duplicate product SKU in catalog: '{sku}'")
-        unit_price = Decimal(str(p["unit_price"])).quantize(Decimal("0.01"))
+        unit_price = Decimal(str(p["unit_price"])).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         products[sku] = Product(sku=sku, name=p["name"], unit_price=unit_price)
 
     discount_rules = data.get("discount_rules", [])

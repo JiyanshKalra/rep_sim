@@ -726,3 +726,20 @@ def test_C3_catalog_tier_errors_raise_catalog_error() -> None:
     }
     cat = build_catalog(top_no_max)
     assert cat.tiers[-1].max_seats is None
+
+
+def test_C4_catalog_unit_price_rounds_half_up() -> None:
+    # C4: Catalog unit prices quantize with ROUND_HALF_UP (e.g. 0.005 -> 0.01, 12.345 -> 12.35)
+    catalog_data = {
+        "currency": "USD",
+        "discount_rules": [
+            {"code": "T1", "min_seats": 1, "max_discount_pct": 10},
+        ],
+        "products": [
+            {"sku": "P1", "name": "Prod 1", "unit_price": Decimal("0.005")},
+            {"sku": "P2", "name": "Prod 2", "unit_price": Decimal("12.345")},
+        ],
+    }
+    cat = build_catalog(catalog_data)
+    assert cat.products["P1"].unit_price == Decimal("0.01")
+    assert cat.products["P2"].unit_price == Decimal("12.35")
