@@ -644,3 +644,32 @@ def test_R5_malformed_payloads_only_raise_quote_validation_error(
             f"Expected QuoteValidationError but got {type(exc).__name__}: {exc}\n"
             f"Payload: {payload!r}"
         ) from exc
+
+
+def test_C2_non_object_line_reports_only_sku_unknown(catalog: Catalog) -> None:
+    # C2: A non-object line reports exactly one error: sku_unknown on lines[i].sku; no quantity error
+    base = {
+        "seats": 10,
+        "discount_pct": "0",
+        "annual_commitment": False,
+    }
+    for bad_line in [5, "AGENT-CORE", None]:
+        raw = dict(base, lines=[bad_line])
+        with pytest.raises(QuoteValidationError) as exc_info:
+            validate_draft(catalog, raw)
+        errors = [(e.code, e.field) for e in exc_info.value.errors]
+        assert errors == [("sku_unknown", "lines[0].sku")], (
+            f"For line {bad_line!r}, expected [(sku_unknown, lines[0].sku)], got {errors}"
+        )
+
+    # Mixed: first line bad, second line valid -> only the bad line's sku_unknown
+    raw_mixed = dict(
+        base,
+        lines=[5, {"sku": "AGENT-CORE", "quantity": 1}],
+    )
+    with pytest.raises(QuoteValidationError) as exc_info:
+        validate_draft(catalog, raw_mixed)
+    errors = [(e.code, e.field) for e in exc_info.value.errors]
+    assert errors == [("sku_unknown", "lines[0].sku")], (
+        f"For mixed lines, expected [(sku_unknown, lines[0].sku)], got {errors}"
+    )

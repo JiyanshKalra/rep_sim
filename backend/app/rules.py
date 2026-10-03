@@ -296,18 +296,12 @@ def _validate_lines(catalog: Catalog, raw: dict, errors: list[RuleError]) -> lis
     for i, line in enumerate(lines_raw):
         prefix = f"lines[{i}]"
         if not isinstance(line, dict):
+            # C2: Non-object line has no SKU; skip quantity check entirely
             errors.append(
                 RuleError(
                     code="sku_unknown",
                     field=f"{prefix}.sku",
                     message="This product is not in the catalog.",
-                )
-            )
-            errors.append(
-                RuleError(
-                    code="quantity_not_integer",
-                    field=f"{prefix}.quantity",
-                    message="Quantity must be a whole number.",
                 )
             )
             continue
