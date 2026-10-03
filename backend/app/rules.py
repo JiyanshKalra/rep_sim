@@ -110,43 +110,40 @@ class QuoteValidationError(Exception):
         self.errors = errors
 
 
-def _parse_integer(raw: Any) -> int | None:
-    # R5: Accept int (excluding bool) or string matching integer regex
+def _coerce_to_str(raw: Any) -> str | None:
+    # Returns a stripped string for int/float/str; None for bool, None, or other types
     if isinstance(raw, bool) or raw is None:
         return None
     if isinstance(raw, int):
-        return raw
+        return str(raw)
+    if isinstance(raw, float):
+        return str(raw) if math.isfinite(raw) else None
     if isinstance(raw, str):
-        trimmed = raw.strip()
-        if not _INTEGER_PATTERN.match(trimmed):
-            return None
-        try:
-            return int(trimmed)
-        except ValueError:
-            # Python rejects strings with too many digits (>4300)
-            return None
+        return raw.strip()
     return None
 
 
-def _parse_discount(raw: Any) -> tuple[Decimal | None, str | None]:
-    # R5: Accept int (not bool), finite float, or decimal string
-    if isinstance(raw, bool) or raw is None:
-        return None, "discount_not_number"
-    if isinstance(raw, int):
-        dec = Decimal(raw)
-    elif isinstance(raw, float):
-        if not math.isfinite(raw):
-            return None, "discount_not_number"
-        dec = Decimal(str(raw))
-    elif isinstance(raw, str):
-        trimmed = raw.strip()
-        if not _DISCOUNT_PATTERN.match(trimmed):
-            return None, "discount_not_number"
-        dec = Decimal(trimmed)
-    else:
-        return None, "discount_not_number"
+def _parse_integer(raw: Any) -> int | None:
+    # R5: Accept int (excluding bool) or integer-format string; float is always rejected
+    if isinstance(raw, float):
+        return None
+    text = _coerce_to_str(raw)
+    if text is None or not _INTEGER_PATTERN.match(text):
+        return None
+    try:
+        return int(text)
+    except ValueError:
+        # Python rejects digit strings longer than 4300 characters
+        return None
 
-    # R5: Negative zero (-0 or -0.0) counts as 0, not negative; assigning Decimal(0) drops the minus sign of "-0"
+
+def _parse_discount(raw: Any) -> tuple[Decimal | None, str | None]:
+    # R5: Accept int (not bool), finite float, or decimal-format string
+    text = _coerce_to_str(raw)
+    if text is None or not _DISCOUNT_PATTERN.match(text):
+        return None, "discount_not_number"
+    dec = Decimal(text)
+    # R5: Negative zero (-0 or -0.0) counts as 0, not negative; Decimal(0) drops the minus sign
     if dec == Decimal(0):
         dec = Decimal(0)
     if dec < Decimal(0):
