@@ -187,7 +187,7 @@ def _validate_tiers(sorted_rules: list[dict]) -> list[Tier]:
 
         if i > 0:
             prev_max = tiers[i - 1].max_seats
-            expected_min = prev_max + 1  # type: ignore[operator]
+            expected_min = (prev_max + 1) if prev_max is not None else min_seats
             if min_seats != expected_min:
                 raise CatalogError(
                     f"Tier gap or overlap: tier '{code}' starts at {min_seats}, expected {expected_min}"
@@ -239,16 +239,15 @@ def find_tier(catalog: Catalog, seats: int) -> Tier:
         if tier.max_seats is None:
             if seats >= tier.min_seats:
                 return tier
-        else:
-            if tier.min_seats <= seats <= tier.max_seats:
-                return tier
-    raise ValueError(f"No tier found for seats count {seats}.")
+        elif tier.min_seats <= seats <= tier.max_seats:
+            return tier
+    raise CatalogError(f"Seat count {seats} does not match any catalog tier.")
 
 
-def _validate_customer_name(raw: dict, require: bool, errors: list[RuleError]) -> str:
+def _validate_customer_name(raw: dict, require_customer_name: bool, errors: list[RuleError]) -> str:
     # R6: customer_name checked only when require_customer_name is True
     c_raw = raw.get("customer_name")
-    if not require:
+    if not require_customer_name:
         return c_raw.strip() if isinstance(c_raw, str) else ""
     if not isinstance(c_raw, str) or not c_raw.strip():
         errors.append(
@@ -279,7 +278,9 @@ def _validate_seats(raw: dict, errors: list[RuleError]) -> int | None:
     if parsed is None:
         errors.append(
             RuleError(
-                code="seats_not_integer", field="seats", message="Seats must be a whole number."
+                code="seats_not_integer",
+                field="seats",
+                message="Seats must be a whole number.",
             )
         )
         return None
@@ -295,6 +296,59 @@ def _validate_seats(raw: dict, errors: list[RuleError]) -> int | None:
     return parsed
 
 
+def _check_sku(
+    catalog: Catalog, index: int, line: dict, seen_skus: set[str], errors: list[RuleError]
+) -> str | None:
+    # R5: Validate line SKU presence in catalog and uniqueness on draft
+    prefix = f"lines[{index}]"
+    sku_val = line.get("sku")
+    if not isinstance(sku_val, str) or sku_val not in catalog.products:
+        msg = (
+            f"Product '{sku_val}' is not in the catalog."
+            if isinstance(sku_val, str)
+            else "This product is not in the catalog."
+        )
+        errors.append(RuleError(code="sku_unknown", field=f"{prefix}.sku", message=msg))
+        return None
+    if sku_val in seen_skus:
+        errors.append(
+            RuleError(
+                code="sku_duplicate",
+                field=f"{prefix}.sku",
+                message=f"Product '{sku_val}' is already on this quote. Increase its quantity instead.",
+            )
+        )
+        return None
+    seen_skus.add(sku_val)
+    return sku_val
+
+
+def _check_quantity(index: int, line: dict, errors: list[RuleError]) -> int | None:
+    # R5: Validate line quantity integer format and sanity range [1, 10,000]
+    prefix = f"lines[{index}]"
+    qty_val = line.get("quantity")
+    qty_parsed = _parse_integer(qty_val)
+    if qty_parsed is None:
+        errors.append(
+            RuleError(
+                code="quantity_not_integer",
+                field=f"{prefix}.quantity",
+                message="Quantity must be a whole number.",
+            )
+        )
+        return None
+    if qty_parsed < MIN_QUANTITY or qty_parsed > MAX_QUANTITY:
+        errors.append(
+            RuleError(
+                code="quantity_out_of_range",
+                field=f"{prefix}.quantity",
+                message="Quantity must be between 1 and 10,000.",
+            )
+        )
+        return None
+    return qty_parsed
+
+
 def _validate_lines(catalog: Catalog, raw: dict, errors: list[RuleError]) -> list[DraftLine]:
     # R5: Must include at least one valid line item
     lines_raw = raw.get("lines")
@@ -307,63 +361,21 @@ def _validate_lines(catalog: Catalog, raw: dict, errors: list[RuleError]) -> lis
     parsed_lines: list[DraftLine] = []
     seen_skus: set[str] = set()
     for i, line in enumerate(lines_raw):
-        prefix = f"lines[{i}]"
         if not isinstance(line, dict):
             # C2: Non-object line has no SKU; skip quantity check entirely
             errors.append(
                 RuleError(
                     code="sku_unknown",
-                    field=f"{prefix}.sku",
+                    field=f"lines[{i}].sku",
                     message="This product is not in the catalog.",
                 )
             )
             continue
 
-        sku_val = line.get("sku")
-        sku_valid = False
-        if not isinstance(sku_val, str) or sku_val not in catalog.products:
-            msg = (
-                f"Product '{sku_val}' is not in the catalog."
-                if isinstance(sku_val, str)
-                else "This product is not in the catalog."
-            )
-            errors.append(RuleError(code="sku_unknown", field=f"{prefix}.sku", message=msg))
-        elif sku_val in seen_skus:
-            errors.append(
-                RuleError(
-                    code="sku_duplicate",
-                    field=f"{prefix}.sku",
-                    message=f"Product '{sku_val}' is already on this quote. Increase its quantity instead.",
-                )
-            )
-        else:
-            seen_skus.add(sku_val)
-            sku_valid = True
-
-        qty_val = line.get("quantity")
-        qty_parsed = _parse_integer(qty_val)
-        qty_valid = False
-        if qty_parsed is None:
-            errors.append(
-                RuleError(
-                    code="quantity_not_integer",
-                    field=f"{prefix}.quantity",
-                    message="Quantity must be a whole number.",
-                )
-            )
-        elif qty_parsed < MIN_QUANTITY or qty_parsed > MAX_QUANTITY:
-            errors.append(
-                RuleError(
-                    code="quantity_out_of_range",
-                    field=f"{prefix}.quantity",
-                    message="Quantity must be between 1 and 10,000.",
-                )
-            )
-        else:
-            qty_valid = True
-
-        if sku_valid and qty_valid:
-            parsed_lines.append(DraftLine(sku=sku_val, quantity=qty_parsed))  # type: ignore[arg-type]
+        sku = _check_sku(catalog, i, line, seen_skus, errors)
+        quantity = _check_quantity(i, line, errors)
+        if sku is not None and quantity is not None:
+            parsed_lines.append(DraftLine(sku=sku, quantity=quantity))
     return parsed_lines
 
 
@@ -432,19 +444,19 @@ def validate_draft(catalog: Catalog, raw: dict, require_customer_name: bool = Fa
     if errors:
         raise QuoteValidationError(errors)
 
+    # ValidDraft requires an integer seat count; empty errors guarantees seats is valid
+    assert seats is not None
+
     return ValidDraft(
         customer_name=name,
-        seats=seats,  # type: ignore[arg-type]
+        seats=seats,
         lines=lines,
         discount_pct=discount if discount is not None else Decimal(0),
         annual_commitment=commitment,
     )
 
 
-def calculate(catalog: Catalog, draft: ValidDraft) -> CalculationResult:
-    """Calculate line totals, rounded discount amount, and approval status."""
-    tier = find_tier(catalog, draft.seats)
-
+def _price_lines(catalog: Catalog, draft: ValidDraft) -> tuple[list[PricedLine], Decimal]:
     # R3: Line item pricing without rounding intermediate multiplications
     priced_lines: list[PricedLine] = []
     subtotal = Decimal("0.00")
@@ -461,6 +473,27 @@ def calculate(catalog: Catalog, draft: ValidDraft) -> CalculationResult:
             )
         )
         subtotal += line_total
+    return priced_lines, subtotal
+
+
+def _find_approval_reasons(
+    discount_pct: Decimal, total: Decimal, annual_commitment: bool
+) -> list[str]:
+    # R4: Strict > comparisons evaluated independently in fixed rule order
+    reasons: list[str] = []
+    if discount_pct > DISCOUNT_ABOVE_PCT:
+        reasons.append("discount_above_15_percent")
+    if total > TOTAL_ABOVE:
+        reasons.append("total_above_25000")
+    if annual_commitment and discount_pct > COMMITMENT_DISCOUNT_ABOVE_PCT:
+        reasons.append("annual_commitment_discount_above_10_percent")
+    return reasons
+
+
+def calculate(catalog: Catalog, draft: ValidDraft) -> CalculationResult:
+    """Calculate line totals, rounded discount amount, and approval status."""
+    tier = find_tier(catalog, draft.seats)
+    priced_lines, subtotal = _price_lines(catalog, draft)
 
     # R3: Never use float arithmetic or Python round(); quantize once using ROUND_HALF_UP
     discount_amount = (subtotal * draft.discount_pct / Decimal(100)).quantize(
@@ -468,15 +501,7 @@ def calculate(catalog: Catalog, draft: ValidDraft) -> CalculationResult:
     )
     # R3: Total is subtotal minus discount amount, ensuring numbers always balance
     total = subtotal - discount_amount
-
-    # R4: Strict > comparisons evaluated independently in fixed rule order
-    reasons: list[str] = []
-    if draft.discount_pct > DISCOUNT_ABOVE_PCT:
-        reasons.append("discount_above_15_percent")
-    if total > TOTAL_ABOVE:
-        reasons.append("total_above_25000")
-    if draft.annual_commitment and draft.discount_pct > COMMITMENT_DISCOUNT_ABOVE_PCT:
-        reasons.append("annual_commitment_discount_above_10_percent")
+    reasons = _find_approval_reasons(draft.discount_pct, total, draft.annual_commitment)
 
     return CalculationResult(
         tier=tier,
