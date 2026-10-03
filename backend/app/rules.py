@@ -169,20 +169,35 @@ def _validate_tiers(sorted_rules: list[dict]) -> list[Tier]:
     tiers: list[Tier] = []
     num_tiers = len(sorted_rules)
     for i, r in enumerate(sorted_rules):
-        if i > 0:
-            prev_max = sorted_rules[i - 1]["max_seats"]
-            expected_min = prev_max + 1
-            if r["min_seats"] != expected_min:
-                raise CatalogError(
-                    f"Tier gap or overlap: tier '{r['code']}' starts at {r['min_seats']}, expected {expected_min}"
-                )
-        # R1: Highest tier is open-ended; max_seats is None, catalog sentinel 99999 is ignored
         is_highest = i == num_tiers - 1
-        max_seats = None if is_highest else int(r["max_seats"])
+        code = r["code"]
+        min_seats = int(r["min_seats"])
+
+        if is_highest:
+            # R1: Highest tier is open-ended; max_seats is None, catalog sentinel 99999 is ignored
+            max_seats = None
+        else:
+            # C3: Every non-highest tier must have a whole-number max_seats
+            raw_max = r.get("max_seats")
+            if not isinstance(raw_max, int) or isinstance(raw_max, bool):
+                raise CatalogError(f"Tier '{code}' needs a whole-number max_seats.")
+            if raw_max < min_seats:
+                raise CatalogError(
+                    f"Tier '{code}' has max_seats {raw_max} below its min_seats {min_seats}."
+                )
+            max_seats = raw_max
+
+        if i > 0:
+            prev_max = tiers[i - 1].max_seats
+            expected_min = prev_max + 1  # type: ignore[operator]
+            if min_seats != expected_min:
+                raise CatalogError(
+                    f"Tier gap or overlap: tier '{code}' starts at {min_seats}, expected {expected_min}"
+                )
         tiers.append(
             Tier(
-                code=r["code"],
-                min_seats=int(r["min_seats"]),
+                code=code,
+                min_seats=min_seats,
                 max_seats=max_seats,
                 max_discount_pct=Decimal(str(r["max_discount_pct"])),
             )

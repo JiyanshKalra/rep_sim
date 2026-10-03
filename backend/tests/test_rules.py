@@ -673,3 +673,56 @@ def test_C2_non_object_line_reports_only_sku_unknown(catalog: Catalog) -> None:
     assert errors == [("sku_unknown", "lines[0].sku")], (
         f"For mixed lines, expected [(sku_unknown, lines[0].sku)], got {errors}"
     )
+
+
+def test_C3_catalog_tier_errors_raise_catalog_error() -> None:
+    # C3: Missing or non-integer max_seats on a lower tier raises CatalogError, not KeyError/TypeError
+    base_products = [{"sku": "P1", "name": "Prod 1", "unit_price": 10}]
+
+    # Lower tier with max_seats missing -> CatalogError naming the tier code
+    missing_max = {
+        "currency": "USD",
+        "products": base_products,
+        "discount_rules": [
+            {"code": "T1", "min_seats": 1, "max_discount_pct": 10},
+            {"code": "T2", "min_seats": 2, "max_seats": 99999, "max_discount_pct": 20},
+        ],
+    }
+    with pytest.raises(CatalogError, match="T1"):
+        build_catalog(missing_max)
+
+    # Lower tier with max_seats = None -> CatalogError naming the tier code
+    none_max = {
+        "currency": "USD",
+        "products": base_products,
+        "discount_rules": [
+            {"code": "T1", "min_seats": 1, "max_seats": None, "max_discount_pct": 10},
+            {"code": "T2", "min_seats": 2, "max_seats": 99999, "max_discount_pct": 20},
+        ],
+    }
+    with pytest.raises(CatalogError, match="T1"):
+        build_catalog(none_max)
+
+    # Lower tier with max_seats below min_seats -> CatalogError naming the tier code
+    max_below_min = {
+        "currency": "USD",
+        "products": base_products,
+        "discount_rules": [
+            {"code": "T1", "min_seats": 1, "max_seats": 0, "max_discount_pct": 10},
+            {"code": "T2", "min_seats": 2, "max_seats": 99999, "max_discount_pct": 20},
+        ],
+    }
+    with pytest.raises(CatalogError, match="T1"):
+        build_catalog(max_below_min)
+
+    # Top tier without max_seats builds fine
+    top_no_max = {
+        "currency": "USD",
+        "products": base_products,
+        "discount_rules": [
+            {"code": "T1", "min_seats": 1, "max_seats": 9, "max_discount_pct": 10},
+            {"code": "T2", "min_seats": 10, "max_discount_pct": 20},
+        ],
+    }
+    cat = build_catalog(top_no_max)
+    assert cat.tiers[-1].max_seats is None
