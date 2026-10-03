@@ -1,5 +1,5 @@
-// Debounced hook that calls the calculate endpoint whenever the draft fields change.
-// Stale in-flight requests are cancelled via AbortController so only the latest response updates state.
+// Debounced hook that asks the API to calculate the draft whenever the form fields change.
+// The browser never calculates anything: it only keeps the latest answer the API sent.
 
 import { useEffect, useState } from "react";
 import type { ApiErrorItem, Calculation } from "./types";
@@ -15,6 +15,7 @@ export interface CalculationView {
 
 const DEBOUNCE_MS = 400;
 
+// The last API answer, plus the draft (as JSON text) it was calculated for.
 interface Answer {
   key: string;
   calculation: Calculation | null;
@@ -22,38 +23,60 @@ interface Answer {
   failureMessage: string | null;
 }
 
-function isBlank(f: DraftFormFields): boolean {
-  return f.seats.trim() === "" && f.lines.length === 0;
+const EMPTY_ANSWER: Answer = { key: "", calculation: null, errors: [], failureMessage: null };
+
+// Nothing to calculate until the rep has entered seats or added a product.
+function isBlank(fields: DraftFormFields): boolean {
+  return fields.seats.trim() === "" && fields.lines.length === 0;
 }
 
-function mapResultToAnswer(key: string, res: ApiResult<Calculation>): (prev: Answer) => Answer {
-  return (prev) => {
-    if (res.ok) return { key, calculation: res.data, errors: [], failureMessage: null };
-    if (res.kind === "api") return { key, calculation: prev.calculation, errors: res.errors, failureMessage: null };
-    if (res.kind === "network") return { key, calculation: prev.calculation, errors: [], failureMessage: res.message };
-    return prev;
-  };
+// On an error we keep the previous calculation, so the rep still sees the last good preview (shown as out of date).
+function nextAnswer(prev: Answer, key: string, result: ApiResult<Calculation>): Answer {
+  if (result.ok) {
+    return { key, calculation: result.data, errors: [], failureMessage: null };
+  }
+  if (result.kind === "api") {
+    return { key, calculation: prev.calculation, errors: result.errors, failureMessage: null };
+  }
+  if (result.kind === "network") {
+    return { key, calculation: prev.calculation, errors: [], failureMessage: result.message };
+  }
+  return prev;
 }
 
 export function useCalculate(fields: DraftFormFields): CalculationView {
+  // Destructured because `fields` is a new object on every render; the effect must depend on the values only.
   const { seats, lines, discountPct, annualCommitment } = fields;
-  const currentKey = JSON.stringify(toDraftPayload({ seats, lines, discountPct, annualCommitment }));
-  const [answer, setAnswer] = useState<Answer>({ key: "", calculation: null, errors: [], failureMessage: null });
+  const blank = isBlank(fields);
+  const currentKey = JSON.stringify(toDraftPayload(fields));
+  const [answer, setAnswer] = useState<Answer>(EMPTY_ANSWER);
 
   useEffect(() => {
-    if (isBlank({ seats, lines, discountPct, annualCommitment })) return;
-    const key = JSON.stringify(toDraftPayload({ seats, lines, discountPct, annualCommitment }));
+    if (blank) return;
+    const payload = toDraftPayload({ seats, lines, discountPct, annualCommitment });
+    const key = JSON.stringify(payload);
     const controller = new AbortController();
     const timer = setTimeout(async () => {
-      const res = await calculateQuote(toDraftPayload({ seats, lines, discountPct, annualCommitment }), controller.signal);
+      const result = await calculateQuote(payload, controller.signal);
       if (controller.signal.aborted) return;
-      setAnswer(mapResultToAnswer(key, res));
+      setAnswer((prev) => nextAnswer(prev, key, result));
     }, DEBOUNCE_MS);
-    return () => { clearTimeout(timer); controller.abort(); };
-  }, [seats, lines, discountPct, annualCommitment]);
+    // Cleanup runs when the fields change again. It cancels the waiting timer and the request in flight,
+    // so an old response can never overwrite a newer one.
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [blank, seats, lines, discountPct, annualCommitment]);
 
-  if (isBlank({ seats, lines, discountPct, annualCommitment })) {
+  if (blank) {
     return { calculation: null, errors: [], failureMessage: null, isUpdating: false };
   }
-  return { calculation: answer.calculation, errors: answer.errors, failureMessage: answer.failureMessage, isUpdating: answer.key !== currentKey };
+  // isUpdating: the stored answer was calculated for an older draft than the one on screen.
+  return {
+    calculation: answer.calculation,
+    errors: answer.errors,
+    failureMessage: answer.failureMessage,
+    isUpdating: answer.key !== currentKey,
+  };
 }
