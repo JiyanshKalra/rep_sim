@@ -756,3 +756,46 @@ def test_C5_decimal_discount_pct_is_rejected_as_not_number(catalog: Catalog) -> 
     with pytest.raises(QuoteValidationError) as exc_info:
         validate_draft(catalog, raw)
     assert any(e.code == "discount_not_number" for e in exc_info.value.errors)
+
+
+def test_R7_status_transitions_valid_and_terminal() -> None:
+    # R7: Verify valid and terminal status transitions and reachable statuses
+    from app.rules import InvalidTransitionError, allowed_next_statuses, check_transition
+
+    assert allowed_next_statuses("draft") == ["submitted"]
+    assert allowed_next_statuses("submitted") == ["approved", "rejected"]
+    assert allowed_next_statuses("approved") == []
+    assert allowed_next_statuses("rejected") == []
+    assert allowed_next_statuses("unknown") == []
+
+    # Valid transitions do not raise
+    check_transition("draft", "submitted")
+    check_transition("submitted", "approved")
+    check_transition("submitted", "rejected")
+
+    # Invalid transitions raise InvalidTransitionError with exact formatted message
+    with pytest.raises(InvalidTransitionError) as exc_info:
+        check_transition("draft", "approved")
+    assert (
+        str(exc_info.value)
+        == "A draft quote cannot change to approved. Allowed next statuses: submitted."
+    )
+
+    with pytest.raises(InvalidTransitionError) as exc_info:
+        check_transition("approved", "draft")
+    assert (
+        str(exc_info.value)
+        == "A approved quote cannot change to draft. Allowed next statuses: none (this status is final)."
+    )
+
+
+def test_R6_line_catalog_status(catalog: Catalog) -> None:
+    # R6: Check line freshness against catalog (ok, removed, price_changed)
+    from app.rules import line_catalog_status
+
+    # Matches catalog price
+    assert line_catalog_status(catalog, "AGENT-CORE", "120.00") == "ok"
+    # SKU not in catalog
+    assert line_catalog_status(catalog, "OLD-SKU", "100.00") == "removed"
+    # Price changed in catalog
+    assert line_catalog_status(catalog, "AGENT-CORE", "150.00") == "price_changed"

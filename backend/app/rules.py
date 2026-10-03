@@ -529,3 +529,60 @@ def format_percent(value: Decimal) -> str:
     if value == Decimal(0):
         return "0"
     return f"{value.normalize():f}"
+
+
+# R7: Allowed status transitions. Terminal statuses map to empty tuples.
+STATUS_TRANSITIONS: dict[str, tuple[str, ...]] = {
+    "draft": ("submitted",),
+    "submitted": ("approved", "rejected"),
+    "approved": (),
+    "rejected": (),
+}
+
+# R6: The status assigned to every newly saved quote.
+INITIAL_STATUS = "draft"
+
+
+class InvalidTransitionError(Exception):
+    """R7: Raised when a status change violates the allowed transition graph.
+
+    str(exc) is the user-facing message, already formatted for the error envelope.
+    """
+
+
+def allowed_next_statuses(status: str) -> list[str]:
+    """Return the list of statuses that are reachable from the given status (R7)."""
+    # Unknown statuses are treated as terminal (empty tuple)
+    return list(STATUS_TRANSITIONS.get(status, ()))
+
+
+def check_transition(current: str, requested: str) -> None:
+    """Raise InvalidTransitionError if requested is not allowed from current (R7).
+
+    The message names the current and requested statuses plus the allowed next ones,
+    exactly as the spec requires so tests can assert the exact string.
+    """
+    allowed = allowed_next_statuses(current)
+    if requested in allowed:
+        return
+    # Format the allowed list for the message; terminal statuses say "none (this status is final)"
+    allowed_text = ", ".join(allowed) if allowed else "none (this status is final)"
+    raise InvalidTransitionError(
+        f"A {current} quote cannot change to {requested}. Allowed next statuses: {allowed_text}."
+    )
+
+
+def line_catalog_status(catalog: Catalog, sku: str, saved_unit_price: str) -> str:
+    """Return freshness of a saved line against the current catalog (R6).
+
+    "removed"       — sku no longer exists in the catalog
+    "price_changed" — sku exists but its current formatted price differs from the saved price
+    "ok"            — sku exists and price matches
+    """
+    # R6: Snapshot is never recalculated; we only flag changes for the UI.
+    product = catalog.products.get(sku)
+    if product is None:
+        return "removed"
+    if format_money(product.unit_price) != saved_unit_price:
+        return "price_changed"
+    return "ok"
