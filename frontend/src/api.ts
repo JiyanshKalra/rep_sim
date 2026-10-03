@@ -32,18 +32,11 @@ async function readJson(response: Response): Promise<unknown> {
   }
 }
 
-// If the body has a non-empty errors array, return it; otherwise wrap in a
-// single fallback so callers always get an ApiErrorItem[].
+// Returns the API's errors array when the body has a non-empty one; otherwise one fallback item so callers always get ApiErrorItem[].
+// Only the array itself is checked. Its items are trusted to match the API error format.
 function toErrorItems(json: unknown): ApiErrorItem[] {
-  if (
-    json !== null &&
-    typeof json === "object" &&
-    "errors" in json &&
-    Array.isArray((json as Record<string, unknown>)["errors"]) &&
-    ((json as Record<string, unknown>)["errors"] as unknown[]).length > 0
-  ) {
-    // Shape already validated above; cast is safe (error body matches API contract).
-    return (json as { errors: ApiErrorItem[] }).errors;
+  if (typeof json === "object" && json !== null && "errors" in json && Array.isArray(json.errors) && json.errors.length > 0) {
+    return json.errors;
   }
   return [
     {
