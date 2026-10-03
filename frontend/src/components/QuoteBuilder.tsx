@@ -11,6 +11,7 @@ import { useCalculate } from "../useCalculate";
 import { clearDraft, initialForm, loadDraft, saveDraft } from "../draftStorage";
 import QuoteForm from "./QuoteForm";
 import QuotePreview from "./QuotePreview";
+import ScenarioSection from "./ScenarioSection";
 
 type LoadState =
   | { kind: "loading" }
@@ -168,6 +169,12 @@ function QuoteBuilderReady({ catalog }: { catalog: Catalog }) {
           isBlank={form.seats.trim() === "" && form.lines.length === 0}
         />
       </form>
+      <ScenarioSection
+        formA={form}
+        viewA={view}
+        catalog={catalog}
+        approvalRules={catalog.approval_rules}
+      />
     </div>
   );
 }

@@ -15,6 +15,7 @@ interface LineRowProps {
   errors: ApiErrorItem[];
   onChange: (next: LineFormState) => void;
   onRemove: () => void;
+  idPrefix?: string;
 }
 
 function ProductSelect({
@@ -24,6 +25,7 @@ function ProductSelect({
   usedSkus,
   currency,
   errors,
+  idPrefix = "",
   onChangeSku,
 }: {
   index: number;
@@ -32,20 +34,22 @@ function ProductSelect({
   usedSkus: string[];
   currency: string;
   errors: ApiErrorItem[];
+  idPrefix?: string;
   onChangeSku: (sku: string) => void;
 }) {
   const otherUsed = usedSkus.filter((s) => s !== sku);
   const available = products.filter((p) => !otherUsed.includes(p.sku));
-  const errId = "line-sku-error-" + index;
+  const errId = idPrefix + "line-sku-error-" + index;
+  const selectId = idPrefix + "line-sku-" + index;
   const skuErrors = messagesFor(errors, "lines[" + index + "].sku");
 
   return (
     <div className="form-field">
-      <label htmlFor={"line-sku-" + index} className="form-label">
+      <label htmlFor={selectId} className="form-label">
         Product
       </label>
       <select
-        id={"line-sku-" + index}
+        id={selectId}
         className="form-select"
         value={sku}
         aria-invalid={skuErrors.length > 0 ? "true" : undefined}
@@ -67,24 +71,27 @@ function QuantityInput({
   index,
   quantity,
   errors,
+  idPrefix = "",
   onChangeQty,
 }: {
   index: number;
   quantity: string;
   errors: ApiErrorItem[];
+  idPrefix?: string;
   onChangeQty: (qty: string) => void;
 }) {
-  const errId = "line-qty-error-" + index;
+  const errId = idPrefix + "line-qty-error-" + index;
+  const inputId = idPrefix + "line-qty-" + index;
   const qtyErrors = messagesFor(errors, "lines[" + index + "].quantity");
 
   return (
     <div className="form-field product-line-qty">
-      <label htmlFor={"line-qty-" + index} className="form-label">
+      <label htmlFor={inputId} className="form-label">
         Qty
       </label>
       {/* type="text" with inputMode so typed string reaches API unchanged (R5) */}
       <input
-        id={"line-qty-" + index}
+        id={inputId}
         type="text"
         inputMode="numeric"
         className="form-input"
@@ -107,6 +114,7 @@ export default function LineRow({
   errors,
   onChange,
   onRemove,
+  idPrefix = "",
 }: LineRowProps) {
   const prod = products.find((p) => p.sku === line.sku);
   const removeLabel = "Remove line " + (index + 1) + (prod ? " (" + prod.name + ")" : "");
@@ -120,12 +128,14 @@ export default function LineRow({
         usedSkus={usedSkus}
         currency={currency}
         errors={errors}
+        idPrefix={idPrefix}
         onChangeSku={(sku) => onChange({ ...line, sku })}
       />
       <QuantityInput
         index={index}
         quantity={line.quantity}
         errors={errors}
+        idPrefix={idPrefix}
         onChangeQty={(quantity) => onChange({ ...line, quantity })}
       />
       <div className="product-line-remove-col">

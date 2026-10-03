@@ -15,6 +15,9 @@ interface Props {
   isSaving: boolean;
   maxDiscountPct: Percent | null;
   onChange: (next: QuoteFormState) => void;
+  hideCustomerName?: boolean;
+  hideSaveButton?: boolean;
+  idPrefix?: string;
 }
 
 let lineIdCounter = 0;
@@ -26,29 +29,34 @@ function newLineId(): string {
 function CustomerNameField({
   value,
   saveErrors,
+  idPrefix = "",
   onChange,
 }: {
   value: string;
   saveErrors: ApiErrorItem[];
+  idPrefix?: string;
   onChange: (val: string) => void;
 }) {
   const nameErrors = messagesFor(saveErrors, "customer_name");
+  const inputId = idPrefix + "customer-name";
+  const errId = idPrefix + "customer-name-error";
+
   return (
     <div className="form-field">
-      <label htmlFor="customer-name" className="form-label">
+      <label htmlFor={inputId} className="form-label">
         Customer name
       </label>
       <input
-        id="customer-name"
+        id={inputId}
         type="text"
         className="form-input"
         placeholder="e.g. Acme Corp"
         value={value}
         aria-invalid={nameErrors.length > 0 ? "true" : undefined}
-        aria-describedby={nameErrors.length > 0 ? "customer-name-error" : undefined}
+        aria-describedby={nameErrors.length > 0 ? errId : undefined}
         onChange={(e) => onChange(e.target.value)}
       />
-      <FieldErrors id="customer-name-error" messages={nameErrors} />
+      <FieldErrors id={errId} messages={nameErrors} />
     </div>
   );
 }
@@ -57,32 +65,37 @@ function SeatsField({
   seats,
   tiers,
   errors,
+  idPrefix = "",
   onChange,
 }: {
   seats: string;
   tiers: Catalog["tiers"];
   errors: ApiErrorItem[];
+  idPrefix?: string;
   onChange: (val: string) => void;
 }) {
   const seatsErrors = messagesFor(errors, "seats");
+  const inputId = idPrefix + "seats";
+  const errId = idPrefix + "seats-error";
+
   return (
     <div className="form-field">
-      <label htmlFor="seats" className="form-label">
+      <label htmlFor={inputId} className="form-label">
         Seats
       </label>
       {/* type="text" with inputMode so typed string reaches API unchanged (R5) */}
       <input
-        id="seats"
+        id={inputId}
         type="text"
         inputMode="numeric"
         className="form-input"
         placeholder="e.g. 25"
         value={seats}
         aria-invalid={seatsErrors.length > 0 ? "true" : undefined}
-        aria-describedby={seatsErrors.length > 0 ? "seats-error" : undefined}
+        aria-describedby={seatsErrors.length > 0 ? errId : undefined}
         onChange={(e) => onChange(e.target.value)}
       />
-      <FieldErrors id="seats-error" messages={seatsErrors} />
+      <FieldErrors id={errId} messages={seatsErrors} />
       <div className="tier-hint-list">
         {tiers.map((t) => (
           <span key={t.code} className="tier-hint-item">
@@ -98,11 +111,13 @@ function ProductsFieldset({
   lines,
   catalog,
   errors,
+  idPrefix = "",
   onChangeLines,
 }: {
   lines: LineFormState[];
   catalog: Catalog;
   errors: ApiErrorItem[];
+  idPrefix?: string;
   onChangeLines: (next: LineFormState[]) => void;
 }) {
   const usedSkus = lines.map((l) => l.sku);
@@ -115,6 +130,7 @@ function ProductsFieldset({
   }
 
   const lineErrors = messagesFor(errors, "lines");
+  const errId = idPrefix + "lines-error";
 
   return (
     <div className="form-section">
@@ -122,7 +138,7 @@ function ProductsFieldset({
         <h2 className="form-section-title">Products</h2>
       </div>
       <div className="form-section-body">
-        <FieldErrors id="lines-error" messages={lineErrors} />
+        <FieldErrors id={errId} messages={lineErrors} />
         {lines.length === 0 ? (
           <p className="form-help" style={{ marginBottom: "var(--space-3)" }}>
             No products added yet. Click below to add a product line to this quote.
@@ -138,6 +154,7 @@ function ProductsFieldset({
                 usedSkus={usedSkus}
                 currency={catalog.currency}
                 errors={errors}
+                idPrefix={idPrefix}
                 onChange={(next) => onChangeLines(lines.map((l, idx) => (idx === i ? next : l)))}
                 onRemove={() => onChangeLines(lines.filter((_, idx) => idx !== i))}
               />
@@ -163,14 +180,18 @@ function DiscountField({
   discountPct,
   maxDiscountPct,
   errors,
+  idPrefix = "",
   onChange,
 }: {
   discountPct: string;
   maxDiscountPct: Percent | null;
   errors: ApiErrorItem[];
+  idPrefix?: string;
   onChange: (val: string) => void;
 }) {
   const discountErrors = messagesFor(errors, "discount_pct");
+  const inputId = idPrefix + "discount-pct";
+  const errId = idPrefix + "discount-error";
   const helpText =
     maxDiscountPct !== null
       ? "Maximum allowed for this tier: " + maxDiscountPct + "%"
@@ -178,22 +199,22 @@ function DiscountField({
 
   return (
     <div className="form-field">
-      <label htmlFor="discount-pct" className="form-label">
+      <label htmlFor={inputId} className="form-label">
         Discount (%)
       </label>
       {/* type="text" with inputMode="decimal" so typed string reaches API unchanged (R5) */}
       <input
-        id="discount-pct"
+        id={inputId}
         type="text"
         inputMode="decimal"
         className="form-input"
         placeholder="0"
         value={discountPct}
         aria-invalid={discountErrors.length > 0 ? "true" : undefined}
-        aria-describedby={discountErrors.length > 0 ? "discount-error" : undefined}
+        aria-describedby={discountErrors.length > 0 ? errId : undefined}
         onChange={(e) => onChange(e.target.value)}
       />
-      <FieldErrors id="discount-error" messages={discountErrors} />
+      <FieldErrors id={errId} messages={discountErrors} />
       <p className="form-help">{helpText}</p>
     </div>
   );
@@ -202,17 +223,22 @@ function DiscountField({
 function CommitmentField({
   checked,
   errors,
+  idPrefix = "",
   onChange,
 }: {
   checked: boolean;
   errors: ApiErrorItem[];
+  idPrefix?: string;
   onChange: (val: boolean) => void;
 }) {
+  const inputId = idPrefix + "annual-commitment";
+  const errId = idPrefix + "annual-commitment-error";
+
   return (
     <div className={"commitment-box" + (checked ? " is-selected" : "")}>
-      <label className="form-check" htmlFor="annual-commitment">
+      <label className="form-check" htmlFor={inputId}>
         <input
-          id="annual-commitment"
+          id={inputId}
           type="checkbox"
           checked={checked}
           onChange={(e) => onChange(e.target.checked)}
@@ -220,10 +246,7 @@ function CommitmentField({
         <span className="form-check-label">Annual Commitment</span>
       </label>
       <p className="form-check-hint">12-month agreement. Influences approval rules.</p>
-      <FieldErrors
-        id="annual-commitment-error"
-        messages={messagesFor(errors, "annual_commitment")}
-      />
+      <FieldErrors id={errId} messages={messagesFor(errors, "annual_commitment")} />
     </div>
   );
 }
@@ -236,24 +259,33 @@ export default function QuoteForm({
   isSaving,
   maxDiscountPct,
   onChange,
+  hideCustomerName = false,
+  hideSaveButton = false,
+  idPrefix = "",
 }: Props) {
   return (
     <div className="builder-form-col">
       <div className="form-section">
         <div className="form-section-header">
-          <h2 className="form-section-title">Customer &amp; Seats</h2>
+          <h2 className="form-section-title">
+            {hideCustomerName ? "Seats" : "Customer & Seats"}
+          </h2>
         </div>
         <div className="form-section-body">
-          <div className="customer-grid">
-            <CustomerNameField
-              value={form.customerName}
-              saveErrors={saveErrors}
-              onChange={(customerName) => onChange({ ...form, customerName })}
-            />
+          <div className={hideCustomerName ? "single-field-grid" : "customer-grid"}>
+            {!hideCustomerName && (
+              <CustomerNameField
+                value={form.customerName}
+                saveErrors={saveErrors}
+                idPrefix={idPrefix}
+                onChange={(customerName) => onChange({ ...form, customerName })}
+              />
+            )}
             <SeatsField
               seats={form.seats}
               tiers={catalog.tiers}
               errors={errors}
+              idPrefix={idPrefix}
               onChange={(seats) => onChange({ ...form, seats })}
             />
           </div>
@@ -264,6 +296,7 @@ export default function QuoteForm({
         lines={form.lines}
         catalog={catalog}
         errors={errors}
+        idPrefix={idPrefix}
         onChangeLines={(lines) => onChange({ ...form, lines })}
       />
 
@@ -277,17 +310,20 @@ export default function QuoteForm({
               discountPct={form.discountPct}
               maxDiscountPct={maxDiscountPct}
               errors={errors}
+              idPrefix={idPrefix}
               onChange={(discountPct) => onChange({ ...form, discountPct })}
             />
             <CommitmentField
               checked={form.annualCommitment}
               errors={errors}
+              idPrefix={idPrefix}
               onChange={(annualCommitment) => onChange({ ...form, annualCommitment })}
             />
           </div>
         </div>
       </div>
 
+    {!hideSaveButton && (
       <div className="form-footer">
         <button
           type="submit"
@@ -298,6 +334,7 @@ export default function QuoteForm({
           {isSaving ? "Saving Quote..." : "Save Quote"}
         </button>
       </div>
-    </div>
+    )}
+  </div>
   );
 }

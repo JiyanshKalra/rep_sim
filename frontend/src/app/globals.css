@@ -380,3 +380,33 @@ a:focus-visible { outline: 2px solid var(--color-focus); outline-offset: 2px; bo
   .review-identity-body { grid-template-columns: 1fr 1fr; }
   .app-nav-brand-badge { display: none; }
 }
+/* Scenario B & Side-by-Side Comparison */
+.add-scenario-b-row { display: flex; justify-content: flex-start; }
+.scenario-b-section { border-top: 2px dashed var(--color-border-strong); padding-top: var(--space-6); }
+.scenario-b-header { display: flex; justify-content: space-between; align-items: center; gap: var(--space-4); margin-bottom: var(--space-4); }
+.scenario-b-title { font-size: var(--font-size-xl); font-weight: 700; color: var(--color-text); margin: 0; }
+.scenario-b-subtitle { font-size: var(--font-size-sm); color: var(--color-text-muted); margin: var(--space-1) 0 0; }
+.scenario-b-form-wrap { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: var(--shadow-sm); }
+.comparison-card { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
+.comparison-not-ready { padding: var(--space-8) var(--space-6); text-align: center; }
+.comparison-not-ready-msg { font-size: var(--font-size-md); font-style: italic; color: var(--color-text-muted); margin: 0; }
+.comparison-body { padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-6); }
+.comparison-table { width: 100%; border-collapse: collapse; }
+.comparison-table th { padding: var(--space-2) var(--space-3); font-size: var(--font-size-xs); font-weight: 700; color: var(--color-text-secondary); text-align: left; text-transform: uppercase; letter-spacing: 0.07em; border-bottom: 2px solid var(--color-border); }
+.comparison-table td { padding: var(--space-3); font-size: var(--font-size-sm); border-bottom: 1px solid var(--color-border); color: var(--color-text); vertical-align: middle; }
+.comparison-table tbody tr:last-child td { border-bottom: none; }
+.comparison-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.comparison-row-diff { background-color: rgba(245, 158, 11, 0.08); }
+.comparison-label { font-weight: 600; color: var(--color-text-secondary); }
+.comparison-val-a, .comparison-val-b { font-variant-numeric: tabular-nums; }
+.comparison-section-title { font-size: var(--font-size-sm); font-weight: 700; color: var(--color-text-secondary); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: var(--space-3); }
+.badge-diff-same { background: var(--color-surface-sub); color: var(--color-text-muted); border-color: var(--color-border); }
+.badge-diff-only-in-a { background: var(--tier-starter-bg); color: var(--tier-starter-text); border-color: var(--tier-starter-border); }
+.badge-diff-only-in-b { background: var(--tier-enterprise-bg); color: var(--tier-enterprise-text); border-color: var(--tier-enterprise-border); }
+.badge-diff-quantity-differs { background: var(--color-warning-bg); color: var(--color-warning-text); border-color: var(--color-warning-border); }
+.approval-summary-col { display: flex; flex-direction: column; gap: var(--space-1); }
+.approval-tag { display: inline-flex; align-items: center; font-size: var(--font-size-xs); font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid transparent; text-transform: uppercase; letter-spacing: 0.02em; width: fit-content; }
+.approval-tag.is-required { background: var(--color-approval-req-bg); color: var(--color-approval-req-text); border-color: var(--color-approval-req-border); }
+.approval-tag.is-ok { background: var(--color-success-bg); color: var(--color-success-text); border-color: var(--color-success-border); }
+.approval-reasons-list { margin: 0; padding-left: var(--space-4); list-style: disc; }
+.approval-reasons-list li { font-size: var(--font-size-xs); color: var(--color-approval-req-text); }
