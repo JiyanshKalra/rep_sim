@@ -57,3 +57,27 @@ def explain_pricing(draft: ValidDraft, result: CalculationResult) -> list[str]:
         _format_pricing_line(result),
         *_format_approval_lines(result),
     ]
+
+
+def generate_approval_guidance(result: CalculationResult) -> list[str]:
+    # Deterministic guidance explaining why approval is required and what change removes each trigger
+    if not result.approval_required:
+        return []
+
+    guidance: list[str] = []
+    for reason in result.approval_reasons:
+        if reason == "discount_above_15_percent":
+            guidance.append(
+                f"Discount exceeds the {format_percent(DISCOUNT_ABOVE_PCT)}% approval threshold. "
+                f"Reducing the discount to {format_percent(DISCOUNT_ABOVE_PCT)}% or below removes this discount-based approval requirement."
+            )
+        elif reason == "annual_commitment_discount_above_10_percent":
+            guidance.append(
+                f"Annual commitment with a discount above {format_percent(COMMITMENT_DISCOUNT_ABOVE_PCT)}% requires approval."
+            )
+        elif reason == "total_above_25000":
+            guidance.append(
+                f"Quote total exceeds ${TOTAL_ABOVE:,.0f} and requires approval."
+            )
+    return guidance
+

@@ -49,10 +49,10 @@ function useStatusTransition(id: string, onSuccess: (q: SavedQuote) => void) {
   const [isChanging, setIsChanging] = useState(false);
   const [alertMessage, setAlertMessage] = useState<string | null>(null);
 
-  async function handleStatusChange(next: QuoteStatus) {
+  async function handleStatusChange(next: QuoteStatus, reason?: string) {
     setAlertMessage(null);
     setIsChanging(true);
-    const res = await changeQuoteStatus(id, next);
+    const res = await changeQuoteStatus(id, next, reason);
     setIsChanging(false);
     if (res.ok) {
       onSuccess(res.data);
@@ -130,6 +130,25 @@ function QuoteReviewReady({
       {alertMessage && (
         <div role="alert" className="problems-box">
           <p>{alertMessage}</p>
+        </div>
+      )}
+
+      {quote.status === "rejected" && quote.rejection_reason && (
+        <div
+          role="status"
+          className="alert"
+          style={{
+            backgroundColor: "var(--status-rejected-bg)",
+            borderColor: "var(--status-rejected-border)",
+            color: "var(--status-rejected-text)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "var(--space-1)",
+          }}
+        >
+          <div>
+            <strong>Rejection Reason:</strong> {quote.rejection_reason}
+          </div>
         </div>
       )}
 

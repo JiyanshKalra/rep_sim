@@ -177,10 +177,16 @@ def test_R7_every_status_pair(current: str, requested: str) -> None:
         client.patch(f"/api/quotes/{quote_id}/status", json={"status": "submitted"})
     elif current in ("approved", "rejected"):
         client.patch(f"/api/quotes/{quote_id}/status", json={"status": "submitted"})
-        client.patch(f"/api/quotes/{quote_id}/status", json={"status": current})
+        client.patch(
+            f"/api/quotes/{quote_id}/status",
+            json={"status": current, "reason": "Test setup rejection" if current == "rejected" else None},
+        )
 
     # Test requested transition
-    res = client.patch(f"/api/quotes/{quote_id}/status", json={"status": requested})
+    payload: dict[str, Any] = {"status": requested}
+    if requested == "rejected":
+        payload["reason"] = "Test requested rejection"
+    res = client.patch(f"/api/quotes/{quote_id}/status", json=payload)
     if (current, requested) in VALID_PAIRS:
         assert res.status_code == 200
         assert res.json()["status"] == requested
@@ -269,6 +275,7 @@ def test_saved_quote_is_in_file_and_survives_new_client() -> None:
         "created_at",
         "updated_at",
         "result",
+        "history",
     }
     assert set(record.keys()) == expected_record_keys
 

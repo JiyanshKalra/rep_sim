@@ -39,6 +39,7 @@ def create_quote(
     seats: int,
     annual_commitment: bool,
     result: dict[str, Any],
+    customer_requested_discount_pct: str | None = None,
 ) -> dict[str, Any]:
     """Persist a newly calculated draft quote record under the storage lock (R6)."""
     now_iso = datetime.now(timezone.utc).isoformat()
@@ -51,7 +52,16 @@ def create_quote(
         "created_at": now_iso,
         "updated_at": now_iso,
         "result": result,
+        "history": [
+            {
+                "action": "created",
+                "timestamp": now_iso,
+                "details": "Quote created",
+            }
+        ],
     }
+    if customer_requested_discount_pct is not None:
+        record["customer_requested_discount_pct"] = customer_requested_discount_pct
     with _storage_lock:
         path = get_quotes_path()
         quotes = _read_quotes_file(path)
@@ -82,6 +92,7 @@ def list_quotes() -> list[dict[str, Any]]:
 def update_quote_status(
     quote_id: str,
     new_status: str,
+    reason: str | None = None,
 ) -> dict[str, Any]:
     """Validate and transition quote status under storage lock or raise on error (R7)."""
     with _storage_lock:
@@ -94,8 +105,41 @@ def update_quote_status(
         current_status = quote["status"]
         rules.check_transition(current_status, new_status)
 
+        if new_status == "rejected":
+            if not reason or not reason.strip():
+                raise rules.QuoteValidationError(
+                    [
+                        rules.RuleError(
+                            code="rejection_reason_required",
+                            field="reason",
+                            message="A reason is required when rejecting a quote.",
+                        )
+                    ]
+                )
+            clean_reason = reason.strip()
+            quote["rejection_reason"] = clean_reason
+            details = f"Quote rejected: {clean_reason}"
+        elif new_status == "approved":
+            details = "Quote approved"
+        elif new_status == "submitted":
+            details = "Quote submitted for approval"
+        else:
+            details = f"Quote transitioned to {new_status}"
+
+        now_iso = datetime.now(timezone.utc).isoformat()
         quote["status"] = new_status
-        quote["updated_at"] = datetime.now(timezone.utc).isoformat()
+        quote["updated_at"] = now_iso
+
+        if "history" not in quote or not isinstance(quote["history"], list):
+            quote["history"] = []
+
+        quote["history"].append(
+            {
+                "action": new_status,
+                "timestamp": now_iso,
+                "details": details,
+            }
+        )
         quotes[quote_id] = quote
         _write_quotes_file(path, quotes)
         return quote

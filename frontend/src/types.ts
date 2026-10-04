@@ -62,6 +62,12 @@ export interface Calculation {
   explanation: string[];
 }
 
+export interface AuditEntry {
+  action: string;
+  timestamp: string;
+  details: string;
+}
+
 export interface SavedLine extends CalculatedLine {
   catalog_status: CatalogStatus; // computed by the API at read time (R6)
 }
@@ -72,11 +78,14 @@ export interface SavedQuote {
   seats: number;
   annual_commitment: boolean;
   status: QuoteStatus;
+  rejection_reason?: string | null;
+  customer_requested_discount_pct?: Percent | null;
   created_at: string;
   updated_at: string;
   allowed_next_statuses: QuoteStatus[];
   lines: SavedLine[];
   result: Calculation;
+  history?: AuditEntry[];
 }
 
 export interface QuoteSummary {
@@ -111,6 +120,7 @@ export interface QuoteDraftPayload {
   lines: DraftLinePayload[];
   discount_pct: string;
   annual_commitment: boolean;
+  customer_requested_discount_pct?: string;
 }
 
 export interface SaveQuotePayload extends QuoteDraftPayload {
@@ -119,6 +129,7 @@ export interface SaveQuotePayload extends QuoteDraftPayload {
 
 export interface StatusChangePayload {
   status: QuoteStatus;
+  reason?: string;
 }
 
 // ---- Form state: what the inputs hold (always strings for typed values) ----
@@ -135,4 +146,5 @@ export interface QuoteFormState {
   lines: LineFormState[];
   discountPct: string;
   annualCommitment: boolean;
+  customerRequestedDiscountPct?: string;
 }

@@ -7,6 +7,7 @@ import {
   formatPercent,
   describeTier,
   describeReason,
+  describeGuidance,
   formatTimestamp,
   describeApproval,
   describeStatus,
@@ -157,5 +158,30 @@ describe("describeCatalogStatus", () => {
 
   it("returns a plain-English message for a removed product", () => {
     expect(describeCatalogStatus("removed")).toBe("No longer in the catalog");
+  });
+});
+
+describe("describeGuidance", () => {
+  const rules: ApprovalRules = {
+    discount_above_pct: "15",
+    total_above: "25000.00",
+    annual_commitment_discount_above_pct: "10",
+  };
+  const currency = "USD";
+
+  it("provides deterministic guidance for discount > 15%", () => {
+    const text = describeGuidance("discount_above_15_percent", rules, currency);
+    expect(text).toContain("Discount exceeds the 15% approval threshold.");
+    expect(text).toContain("Reducing the discount to 15% or below removes this discount-based approval requirement.");
+  });
+
+  it("provides deterministic guidance for annual commitment with discount > 10%", () => {
+    const text = describeGuidance("annual_commitment_discount_above_10_percent", rules, currency);
+    expect(text).toBe("Annual commitment with a discount above 10% requires approval.");
+  });
+
+  it("provides deterministic guidance for total > $25,000", () => {
+    const text = describeGuidance("total_above_25000", rules, currency);
+    expect(text).toBe("Quote total exceeds $25,000.00 and requires approval.");
   });
 });

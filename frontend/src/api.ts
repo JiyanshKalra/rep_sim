@@ -132,8 +132,12 @@ export function getQuote(
 export function changeQuoteStatus(
   id: string,
   status: QuoteStatus,
+  reason?: string,
 ): Promise<ApiResult<SavedQuote>> {
   const body: StatusChangePayload = { status };
+  if (reason !== undefined && reason.trim() !== "") {
+    body.reason = reason.trim();
+  }
   return request<SavedQuote>(
     "PATCH",
     `/api/quotes/${encodeURIComponent(id)}/status`,

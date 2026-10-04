@@ -117,3 +117,34 @@ export function describeCatalogStatus(status: CatalogStatus): string {
       return "Catalog price has changed since this quote was saved";
   }
 }
+
+// Deterministic guidance explaining why approval is required and what change removes each trigger.
+export function describeGuidance(
+  reason: ApprovalReason,
+  rules: ApprovalRules,
+  currency: string,
+): string {
+  switch (reason) {
+    case "discount_above_15_percent":
+      return (
+        "Discount exceeds the " +
+        formatPercent(rules.discount_above_pct) +
+        " approval threshold. Reducing the discount to " +
+        formatPercent(rules.discount_above_pct) +
+        " or below removes this discount-based approval requirement."
+      );
+    case "annual_commitment_discount_above_10_percent":
+      return (
+        "Annual commitment with a discount above " +
+        formatPercent(rules.annual_commitment_discount_above_pct) +
+        " requires approval."
+      );
+    case "total_above_25000":
+      return (
+        "Quote total exceeds " +
+        formatMoney(rules.total_above, currency) +
+        " and requires approval."
+      );
+  }
+}
+

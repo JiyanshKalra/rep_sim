@@ -44,6 +44,27 @@
    - *Trade-off*: Once approved or rejected, a quote cannot be reopened or edited; the sales rep must create a new quote draft.
    - *Where it lives*: `backend/app/rules.py` in `STATUS_TRANSITIONS`, `allowed_next_statuses`, and `check_transition`.
 
+8. **Audit history and rejection reasons**:
+   - *Decision*: Simple `history` array embedded inside the saved quote record tracking `action` ("created", "submitted", "approved", "rejected"), `timestamp` (UTC ISO string), and `details`. Rejecting a quote requires a non-empty `reason` validated on the backend (returning 422 `rejection_reason_required`), persisted in the history entry and quote record, and displayed on the review page.
+   - *Why*: Provides transparent auditability without introducing a separate audit subsystem, database, or event bus.
+   - *Compatibility*: Existing quotes without history load safely with an empty list (`[]`).
+   - *Where it lives*: `backend/app/storage.py`, `backend/app/schemas.py`, and `frontend/src/components/QuoteReview.tsx` / `QuoteResult.tsx`.
+
+9. **Deterministic approval guidance**:
+   - *Decision*: Plain-English guidance explaining each approval trigger and what specific change removes it, driven deterministically by backend `approval_reasons`.
+   - *Why*: Provides sales reps with actionable guidance without guessing, without duplicate pricing calculations in React, and without any external AI/LLM dependency.
+   - *Where it lives*: `backend/app/explain.py` (`generate_approval_guidance`), `frontend/src/display.ts` (`describeGuidance`), and rendered in `QuotePreview.tsx` and `QuoteResult.tsx`.
+
+10. **Customer requested vs proposed discount (negotiation context)**:
+   - *Decision*: Optional `customer_requested_discount_pct` capturing what the customer asked for. Informational only; does not affect tier, subtotal, discount amount, total, or approval calculations.
+   - *Why*: Gives reps and deal desk clear context (customer requested vs proposed vs policy maximum) without compromising authoritative pricing.
+   - *Where it lives*: `backend/app/rules.py` (`ValidDraft`, `_validate_customer_requested_discount`), `QuoteForm.tsx`, and `QuoteResult.tsx`.
+
+11. **Saved quote search and status filtering**:
+   - *Decision*: Lightweight client-side search (by customer name and quote ID) and status filter (All, Draft, Submitted, Approved, Rejected) on the quotes list.
+   - *Why*: Fast, intuitive, and proportional to the local JSON persistence layer without adding unnecessary server query endpoints.
+   - *Where it lives*: `frontend/src/components/QuotesList.tsx`.
+
 ## 2. Additional decisions and assumptions
 
 - Any submitted quote can be approved or rejected whether or not approval_required is true (business policy decision in absence of user roles).
@@ -111,3 +132,8 @@ AI assistants were used: Claude to plan and review, Google Antigravity coding ag
 - Implemented deterministic pricing explanation in backend (`app/explain.py`), exposing plain-English breakdown on calculation and saved quote responses, and rendered via `ExplanationPanel` on preview and review.
 - Implemented pure product comparison helper (`src/compareLines.ts`) and Scenario B side-by-side comparison in `ScenarioComparison.tsx`.
 - Conducted full-fidelity QA audit: added duplicate submit guard on quote creation, comparison row diff text tags, table horizontal scroll support on narrow viewports, and normalized all repo files to LF without BOM.
+- Implemented lightweight audit history in saved quotes tracking creation, submission, approval, and rejection.
+- Enforced non-empty rejection reason on quote rejection, stored in audit history and displayed on review page.
+- Added deterministic approval guidance derived from backend approval triggers.
+- Added optional customer requested discount field for negotiation context, completely isolated from pricing calculations.
+- Added client-side search and status filter to saved quotes list.

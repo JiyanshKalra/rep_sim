@@ -16,6 +16,7 @@ export function initialForm(): QuoteFormState {
     lines: [],
     discountPct: "0",
     annualCommitment: false,
+    customerRequestedDiscountPct: "",
   };
 }
 
@@ -41,6 +42,12 @@ export function isFormState(value: unknown): value is QuoteFormState {
     !Array.isArray(value.lines) ||
     typeof value.discountPct !== "string" ||
     typeof value.annualCommitment !== "boolean"
+  ) {
+    return false;
+  }
+  if (
+    "customerRequestedDiscountPct" in value &&
+    typeof value.customerRequestedDiscountPct !== "string"
   ) {
     return false;
   }

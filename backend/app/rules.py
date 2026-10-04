@@ -74,6 +74,7 @@ class ValidDraft:
     lines: list[DraftLine]
     discount_pct: Decimal
     annual_commitment: bool
+    customer_requested_discount_pct: Decimal | None = None
 
 
 @dataclass(frozen=True)
@@ -368,6 +369,31 @@ def _validate_discount(
     return disc_val
 
 
+def _validate_customer_requested_discount(raw: dict, errors: list[RuleError]) -> Decimal | None:
+    # Optional field: represents what customer asked for (informational only)
+    if "customer_requested_discount_pct" not in raw:
+        return None
+    val = raw["customer_requested_discount_pct"]
+    if val is None or val == "":
+        return None
+    disc_val, disc_err = _parse_discount(val)
+    if disc_err is not None:
+        messages = {
+            "discount_not_number": "Customer requested discount must be a number.",
+            "discount_negative": "Customer requested discount cannot be negative.",
+            "discount_too_many_decimals": "Customer requested discount can have at most 2 decimal places.",
+        }
+        errors.append(
+            RuleError(
+                code=f"customer_requested_{disc_err}",
+                field="customer_requested_discount_pct",
+                message=messages.get(disc_err, "Customer requested discount is invalid."),
+            )
+        )
+        return None
+    return disc_val
+
+
 def _validate_commitment(raw: dict, errors: list[RuleError]) -> bool:
     # R5: annual_commitment defaults to False if missing, requires strict bool
     if "annual_commitment" not in raw:
@@ -395,6 +421,7 @@ def validate_draft(catalog: Catalog, raw: dict, require_customer_name: bool = Fa
     lines = _validate_lines(catalog, raw_dict, errors)
     discount = _validate_discount(catalog, raw_dict, seats, errors)
     commitment = _validate_commitment(raw_dict, errors)
+    req_discount = _validate_customer_requested_discount(raw_dict, errors)
 
     if errors:
         raise QuoteValidationError(errors)
@@ -408,6 +435,7 @@ def validate_draft(catalog: Catalog, raw: dict, require_customer_name: bool = Fa
         lines=lines,
         discount_pct=discount if discount is not None else Decimal(0),
         annual_commitment=commitment,
+        customer_requested_discount_pct=req_discount,
     )
 
 

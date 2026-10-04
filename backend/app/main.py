@@ -92,11 +92,17 @@ def create_quote(
     result = rules.calculate(catalog, draft)
     explanation = explain_pricing(draft, result)
     calc_response = calculation_to_response(result, explanation)
+    req_discount = (
+        rules.format_percent(draft.customer_requested_discount_pct)
+        if draft.customer_requested_discount_pct is not None
+        else None
+    )
     record = storage.create_quote(
         draft.customer_name,
         draft.seats,
         draft.annual_commitment,
         calc_response.model_dump(),
+        customer_requested_discount_pct=req_discount,
     )
     return saved_quote_to_response(catalog, record)
 
@@ -137,5 +143,5 @@ def update_quote_status_endpoint(
     catalog: Annotated[rules.Catalog, Depends(get_catalog)],
 ) -> SavedQuoteResponse:
     """Update quote workflow status, rejecting invalid transitions (R7)."""
-    updated = storage.update_quote_status(quote_id, body.status)
+    updated = storage.update_quote_status(quote_id, body.status, reason=body.reason)
     return saved_quote_to_response(catalog, updated)

@@ -220,6 +220,43 @@ function DiscountField({
   );
 }
 
+function CustomerRequestedDiscountField({
+  value,
+  errors,
+  idPrefix = "",
+  onChange,
+}: {
+  value: string;
+  errors: ApiErrorItem[];
+  idPrefix?: string;
+  onChange: (val: string) => void;
+}) {
+  const reqErrors = messagesFor(errors, "customer_requested_discount_pct");
+  const inputId = idPrefix + "requested-discount-pct";
+  const errId = idPrefix + "requested-discount-error";
+
+  return (
+    <div className="form-field">
+      <label htmlFor={inputId} className="form-label">
+        Customer Requested Discount (%) <span style={{ fontWeight: 400, color: "var(--color-text-muted)" }}>(Optional)</span>
+      </label>
+      <input
+        id={inputId}
+        type="text"
+        inputMode="decimal"
+        className="form-input"
+        placeholder="e.g. 25"
+        value={value}
+        aria-invalid={reqErrors.length > 0 ? "true" : undefined}
+        aria-describedby={reqErrors.length > 0 ? errId : undefined}
+        onChange={(e) => onChange(e.target.value)}
+      />
+      <FieldErrors id={errId} messages={reqErrors} />
+      <p className="form-help">What the customer asked for (informational; does not affect pricing).</p>
+    </div>
+  );
+}
+
 function CommitmentField({
   checked,
   errors,
@@ -312,6 +349,14 @@ export default function QuoteForm({
               errors={errors}
               idPrefix={idPrefix}
               onChange={(discountPct) => onChange({ ...form, discountPct })}
+            />
+            <CustomerRequestedDiscountField
+              value={form.customerRequestedDiscountPct ?? ""}
+              errors={errors}
+              idPrefix={idPrefix}
+              onChange={(customerRequestedDiscountPct) =>
+                onChange({ ...form, customerRequestedDiscountPct })
+              }
             />
             <CommitmentField
               checked={form.annualCommitment}

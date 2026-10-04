@@ -3,7 +3,7 @@
 
 import type { ApprovalRules, Calculation } from "../types";
 import type { CalculationView } from "../useCalculate";
-import { describeReason, formatMoney, formatPercent } from "../display";
+import { describeGuidance, describeReason, formatMoney, formatPercent } from "../display";
 import ExplanationPanel from "./ExplanationPanel";
 
 interface Props {
@@ -125,6 +125,33 @@ function ApprovalBox({
             <li key={reason}>{describeReason(reason, rules, currency)}</li>
           ))}
         </ul>
+        <div
+          style={{
+            marginTop: "var(--space-3)",
+            borderTop: "1px solid var(--color-border)",
+            paddingTop: "var(--space-2)",
+          }}
+        >
+          <div
+            style={{
+              fontWeight: 600,
+              fontSize: "var(--font-size-xs)",
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+              color: "var(--color-text-secondary)",
+              marginBottom: "var(--space-1)",
+            }}
+          >
+            Approval Guidance
+          </div>
+          <ul style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+            {calc.approval_reasons.map((reason) => (
+              <li key={reason} style={{ fontSize: "var(--font-size-sm)" }}>
+                {describeGuidance(reason, rules, currency)}
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
     );
   }

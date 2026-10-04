@@ -5,13 +5,16 @@ import { QuoteDraftPayload, QuoteFormState, SaveQuotePayload } from "./types";
 
 // A subset of QuoteFormState with only the fields the live calculation needs.
 // The customer name is excluded so typing it never triggers a re-calculation (R5/UX).
-export type DraftFormFields = Pick<QuoteFormState, "seats" | "lines" | "discountPct" | "annualCommitment">;
+export type DraftFormFields = Pick<
+  QuoteFormState,
+  "seats" | "lines" | "discountPct" | "annualCommitment" | "customerRequestedDiscountPct"
+>;
 
 // Accept DraftFormFields so useCalculate can call this without a customer name.
 // QuoteFormState satisfies DraftFormFields (it has all four fields), so toSavePayload still works.
 export function toDraftPayload(form: DraftFormFields): QuoteDraftPayload {
   // Map form state to calculate payload without parsing or trimming numeric fields
-  return {
+  const payload: QuoteDraftPayload = {
     seats: form.seats,
     lines: form.lines.map((line) => ({
       sku: line.sku,
@@ -20,6 +23,10 @@ export function toDraftPayload(form: DraftFormFields): QuoteDraftPayload {
     discount_pct: form.discountPct,
     annual_commitment: form.annualCommitment,
   };
+  if (form.customerRequestedDiscountPct && form.customerRequestedDiscountPct.trim() !== "") {
+    payload.customer_requested_discount_pct = form.customerRequestedDiscountPct.trim();
+  }
+  return payload;
 }
 
 export function toSavePayload(form: QuoteFormState): SaveQuotePayload {

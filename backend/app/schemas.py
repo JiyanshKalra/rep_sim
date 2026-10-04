@@ -79,17 +79,26 @@ class SavedLineOut(BaseModel):
     catalog_status: Literal["ok", "removed", "price_changed"]
 
 
+class AuditEntry(BaseModel):
+    action: str
+    timestamp: str
+    details: str
+
+
 class SavedQuoteResponse(BaseModel):
     id: str
     customer_name: str
     seats: int
     annual_commitment: bool
     status: Literal["draft", "submitted", "approved", "rejected"]
+    rejection_reason: str | None = None
+    customer_requested_discount_pct: Percent | None = None
     created_at: str
     updated_at: str
     allowed_next_statuses: list[str]
     lines: list[SavedLineOut]
     result: CalculationResponse
+    history: list[AuditEntry] = []
 
 
 class QuoteSummaryOut(BaseModel):
@@ -105,6 +114,7 @@ class QuoteSummaryOut(BaseModel):
 
 class StatusUpdateRequest(BaseModel):
     status: str
+    reason: str | None = None
 
 
 def _format_approval_rules() -> ApprovalRulesOut:
@@ -179,17 +189,22 @@ def saved_quote_to_response(catalog: rules.Catalog, quote: dict[str, Any]) -> Sa
         )
         for line in result.lines
     ]
+    raw_history = quote.get("history") or []
+    history = [AuditEntry.model_validate(entry) for entry in raw_history]
     return SavedQuoteResponse(
         id=quote["id"],
         customer_name=quote["customer_name"],
         seats=quote["seats"],
         annual_commitment=quote["annual_commitment"],
         status=quote["status"],
+        rejection_reason=quote.get("rejection_reason"),
+        customer_requested_discount_pct=quote.get("customer_requested_discount_pct"),
         created_at=quote["created_at"],
         updated_at=quote["updated_at"],
         allowed_next_statuses=rules.allowed_next_statuses(quote["status"]),
         lines=lines,
         result=result,
+        history=history,
     )
 
 

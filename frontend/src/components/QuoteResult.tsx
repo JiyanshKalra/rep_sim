@@ -2,10 +2,13 @@
 // Pure presentation component rendering frozen API values without arithmetic (R3).
 
 import type { ApprovalRules, SavedQuote } from "../types";
+import type { AuditEntry, QuoteStatus } from "../types";
 import {
   describeApproval,
   describeCatalogStatus,
+  describeGuidance,
   describeReason,
+  describeStatus,
   formatMoney,
   formatPercent,
   formatTimestamp,
@@ -92,6 +95,19 @@ function QuoteDetailsBlock({ quote }: { quote: SavedQuote }) {
         <span className="detail-term">Commitment</span>
         <span className="detail-value">{quote.annual_commitment ? "Annual (12-month)" : "None"}</span>
 
+        <span className="detail-term">Proposed Discount</span>
+        <span className="detail-value">{formatPercent(quote.result.discount_pct)}</span>
+
+        {quote.customer_requested_discount_pct && (
+          <>
+            <span className="detail-term">Customer Requested</span>
+            <span className="detail-value">{formatPercent(quote.customer_requested_discount_pct)}</span>
+          </>
+        )}
+
+        <span className="detail-term">Policy Maximum</span>
+        <span className="detail-value">{formatPercent(quote.result.max_discount_pct)}</span>
+
         <span className="detail-term">Created</span>
         <span className="detail-value">{formatTimestamp(quote.created_at)}</span>
 
@@ -158,7 +174,75 @@ function ApprovalCard({
             ))}
           </ul>
         )}
+        {isReq && calc.approval_reasons.length > 0 && (
+          <div
+            style={{
+              marginTop: "var(--space-3)",
+              borderTop: "1px solid var(--color-border)",
+              paddingTop: "var(--space-2)",
+            }}
+          >
+            <div
+              style={{
+                fontWeight: 600,
+                fontSize: "var(--font-size-xs)",
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+                color: "var(--color-text-secondary)",
+                marginBottom: "var(--space-1)",
+              }}
+            >
+              Approval Guidance
+            </div>
+            <ul style={{ display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+              {calc.approval_reasons.map((reason) => (
+                <li key={reason} style={{ fontSize: "var(--font-size-sm)" }}>
+                  {describeGuidance(reason, rules, currency)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
+    </div>
+  );
+}
+
+function AuditHistoryBlock({ history }: { history?: AuditEntry[] }) {
+  const entries = history ?? [];
+  return (
+    <div className="card">
+      <div className="card-header">
+        <h2 className="card-title">Audit History</h2>
+      </div>
+      {entries.length === 0 ? (
+        <p className="col-muted" style={{ padding: "var(--space-4)" }}>
+          No history recorded.
+        </p>
+      ) : (
+        <table className="products-table">
+          <thead>
+            <tr>
+              <th scope="col">Action</th>
+              <th scope="col">Date / Time</th>
+              <th scope="col">Details</th>
+            </tr>
+          </thead>
+          <tbody>
+            {entries.map((entry, idx) => (
+              <tr key={idx}>
+                <td>
+                  <span className={"badge badge-status-" + entry.action.toLowerCase()}>
+                    {describeStatus(entry.action as QuoteStatus) || entry.action}
+                  </span>
+                </td>
+                <td className="col-muted">{formatTimestamp(entry.timestamp)}</td>
+                <td>{entry.details}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
@@ -169,6 +253,7 @@ export default function QuoteResult({ quote, currency, approvalRules }: Props) {
       <div className="review-main">
         <ProductsTable quote={quote} currency={currency} />
         <QuoteDetailsBlock quote={quote} />
+        <AuditHistoryBlock history={quote.history} />
       </div>
       <div className="review-aside">
         <PricingBlock quote={quote} currency={currency} />
