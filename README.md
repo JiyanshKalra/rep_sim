@@ -23,29 +23,61 @@ Interactive quote calculator and approval simulator for enterprise sales deals, 
 
 ## Requirements
 
-- Python 3.11+ (tested with Python 3.12.3)
-- Node 24 (specified in `.nvmrc`)
+- Python 3.11 or newer (developed on 3.12)
+- Node.js 20.9 or newer (developed on 24, see `.nvmrc`)
 
-## Quick start
+## Run it
 
-1. Backend:
-   ```bash
-   cd backend
-   python -m venv .venv
-   source .venv/bin/activate
-   pip install -r requirements.txt
-   uvicorn app.main:app --reload --port 8000
-   ```
-   *Windows PowerShell activation*: `.venv\Scripts\Activate.ps1`
+You need two terminals: one for the backend, one for the frontend.
+Run the backend commands from the `backend` folder and the frontend commands from the `frontend` folder.
 
-2. Frontend:
-   ```bash
-   cd frontend
-   npm install
-   npm run dev
-   ```
+### Terminal 1: backend
 
-3. Open http://localhost:3000 in your browser.
+macOS / Linux / WSL:
+```bash
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python -m uvicorn app.main:app --reload --port 8000
+```
+
+Windows PowerShell:
+```powershell
+cd backend
+py -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python -m uvicorn app.main:app --reload --port 8000
+```
+If PowerShell blocks the activate script, run `Set-ExecutionPolicy -Scope Process RemoteSigned` once in that window and try again.
+
+Check it: open http://localhost:8000/api/health. You should see `{"status":"ok"}`.
+
+### Terminal 2: frontend (same on every system)
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Open http://localhost:3000. The first `npm install` can take a few minutes.
+Start the backend first: the page shows "Could not reach the quote service" if it is not running.
+
+No `.env` file is needed. Every setting has a default (see `.env.example`).
+The backend reads real environment variables only (it does not load a `.env` file).
+The frontend reads `NEXT_PUBLIC_API_URL` from `frontend/.env.local` (default `http://localhost:8000`).
+
+To stop either server, press Ctrl+C in its terminal.
+
+### If something goes wrong
+
+- "Could not reach the quote service": the backend is not running on port 8000.
+- `python` not found: use `python3` (macOS/Linux) or `py` (Windows).
+- pip cannot find `requirements.txt`: you are not in the `backend` folder.
+- npm errors: check your Node version (`node -v`) against the requirement above.
+- Port 8000 is busy: start the backend with `--port 8001`, put `NEXT_PUBLIC_API_URL=http://localhost:8001` in `frontend/.env.local`, and restart `npm run dev`.
 
 ## Environment variables
 
